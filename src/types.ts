@@ -51,6 +51,29 @@ export interface LidlOfferProduct {
   campaignTitle?: string;
 }
 
+export interface LidlShopProductSummary {
+  erpNumber: string;
+  productId?: string;
+  title: string;
+  fullTitle?: string;
+  brand?: string;
+  category?: string;
+  price?: LidlPrice;
+  onlineAvailable?: boolean;
+  availabilityBadge?: string;
+  imageUrl?: string;
+  url?: string;
+}
+
+export interface ShopSearchResult {
+  country: string;
+  query: string;
+  total: number;
+  offset: number;
+  limit: number;
+  products: LidlShopProductSummary[];
+}
+
 export interface LidlCampaign {
   id: string;
   title: string;

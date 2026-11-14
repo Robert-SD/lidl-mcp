@@ -8,6 +8,7 @@ import {
   campaignOffersOutputSchema,
   offerProductSchema,
   searchOffersOutputSchema,
+  searchShopProductsOutputSchema,
   shopProductOutputSchema,
 } from "./schemas.js";
 
@@ -118,6 +119,38 @@ export function registerOfferTools(server: McpServer, c: LidlClient): void {
       outputSchema: offerProductSchema,
     },
     withJsonTool((args) => c.getLeafletProduct(args))
+  );
+
+  server.registerTool(
+    "lidl_search_shop_products",
+    {
+      title: "Search Lidl Online Shop Products",
+      description:
+        "Search the Lidl online shop assortment (lidl.nl / lidl.de) by keyword and return matching products with prices, online availability, canonical URLs, and ERP numbers for lidl_get_shop_product. Works without authentication and is cached.",
+      annotations: { readOnlyHint: true },
+      inputSchema: z.object({
+        query: z
+          .string()
+          .min(1)
+          .describe("Search keyword for online shop products (e.g. 'boormachine', 'Parkside', 'airfryer')."),
+        country: countryField,
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe("Maximum number of products to return (default 20, max 50)."),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe("Pagination offset (default 0)."),
+      }),
+      outputSchema: searchShopProductsOutputSchema,
+    },
+    withJsonTool((args) => c.searchShopProducts(args))
   );
 
   server.registerTool(

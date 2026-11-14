@@ -5,6 +5,7 @@ import {
   LidlCampaign,
   LidlCoupon,
   LidlOfferProduct,
+  LidlShopProductSummary,
   Receipt,
   ReceiptLine,
   StoreInfo,
@@ -105,6 +106,59 @@ export function mapOfferProduct(
     isStore: typeof raw?.isStore === "boolean" ? raw.isStore : undefined,
     campaignId: campaign?.id,
     campaignTitle: campaign?.title,
+  };
+}
+
+export function mapShopSearchProduct(
+  item: any,
+  shopBaseUrl?: string
+): LidlShopProductSummary {
+  const d = item?.gridbox?.data ?? item ?? {};
+  const priceObj = d?.price;
+  const priceNow = typeof priceObj?.price === "number" ? priceObj.price : undefined;
+  const oldPrice = typeof priceObj?.oldPrice === "number" ? priceObj.oldPrice : undefined;
+  const pct = priceObj?.discount?.percentageDiscount;
+  const relPath = d?.canonicalPath || d?.canonicalUrl || item?.url || undefined;
+  const fullUrl =
+    typeof relPath === "string" && relPath
+      ? relPath.startsWith("http")
+        ? relPath
+        : shopBaseUrl
+          ? `${shopBaseUrl.replace(/\/+$/, "")}${relPath.startsWith("/") ? relPath : `/${relPath}`}`
+          : relPath
+      : undefined;
+  const badgeText = d?.stockAvailability?.badgeInfo?.badges?.[0]?.text;
+
+  return {
+    erpNumber: String(d?.erpNumber || d?.productId || ""),
+    productId: d?.productId !== undefined && d?.productId !== null ? String(d.productId) : undefined,
+    title: String(d?.title || d?.fullTitle || item?.label || ""),
+    fullTitle: typeof d?.fullTitle === "string" && d.fullTitle ? d.fullTitle : undefined,
+    brand:
+      typeof d?.brand === "string"
+        ? d.brand || undefined
+        : typeof d?.brand?.name === "string"
+          ? d.brand.name || undefined
+          : undefined,
+    category: typeof d?.category === "string" && d.category ? d.category : undefined,
+    price:
+      priceNow !== undefined
+        ? {
+            now: priceNow,
+            was: oldPrice,
+            currency: priceObj?.currencySymbol || priceObj?.currencyCode || "€",
+            discountLabel:
+              typeof pct === "number" && pct > 0 ? `-${pct}%` : undefined,
+          }
+        : undefined,
+    onlineAvailable:
+      typeof d?.stockAvailability?.onlineAvailable === "boolean"
+        ? d.stockAvailability.onlineAvailable
+        : undefined,
+    availabilityBadge:
+      typeof badgeText === "string" && badgeText ? badgeText : undefined,
+    imageUrl: typeof d?.image === "string" && d.image ? d.image : undefined,
+    url: fullUrl,
   };
 }
 

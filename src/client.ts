@@ -28,6 +28,7 @@ import {
   MemberProfile,
   Receipt,
   RegularProductsResult,
+  ShopSearchResult,
   StoreInfo,
 } from "./types.js";
 
@@ -329,6 +330,13 @@ export class LidlClient {
     country?: string;
     storeId?: string;
   }): Promise<LidlOfferProduct> => offers.getLeafletProduct(this.transport, options);
+
+  searchShopProducts = (options: {
+    query: string;
+    country?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ShopSearchResult> => offers.searchShopProducts(this.transport, options);
 
   getShopProduct = (options: {
     productErp: string;

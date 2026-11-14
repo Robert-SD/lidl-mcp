@@ -275,6 +275,29 @@ export const searchOffersOutputSchema = looseObject({
   offers: z.array(offerProductSchema),
 });
 
+export const shopProductSummarySchema = looseObject({
+  erpNumber: z.string(),
+  productId: z.string().nullish(),
+  title: z.string(),
+  fullTitle: z.string().nullish(),
+  brand: z.string().nullish(),
+  category: z.string().nullish(),
+  price: priceSchema.nullish(),
+  onlineAvailable: z.boolean().nullish(),
+  availabilityBadge: z.string().nullish(),
+  imageUrl: z.string().nullish(),
+  url: z.string().nullish(),
+});
+
+export const searchShopProductsOutputSchema = looseObject({
+  country: z.string(),
+  query: z.string(),
+  total: z.number().int(),
+  offset: z.number().int(),
+  limit: z.number().int(),
+  products: z.array(shopProductSummarySchema),
+});
+
 export const shopProductOutputSchema = looseObject({
   productErp: z.string().nullish(),
   erpNumber: z.string().nullish(),

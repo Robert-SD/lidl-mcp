@@ -1,7 +1,7 @@
 import { mapWithConcurrency } from "../concurrency.js";
 import { resolveCountry } from "../countries.js";
-import { mapBrochure, mapCampaign, mapOfferProduct } from "../mappers.js";
-import { LidlBrochure, LidlCampaign, LidlOfferProduct } from "../types.js";
+import { mapBrochure, mapCampaign, mapOfferProduct, mapShopSearchProduct } from "../mappers.js";
+import { LidlBrochure, LidlCampaign, LidlOfferProduct, ShopSearchResult } from "../types.js";
 import { LidlTransport } from "./transport.js";
 
 export async function getBrochures(
@@ -183,6 +183,49 @@ export async function getLeafletProduct(
     }
   );
   return mapOfferProduct(raw);
+}
+
+export async function searchShopProducts(
+  transport: LidlTransport,
+  options: {
+    query: string;
+    country?: string;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<ShopSearchResult> {
+  const ctx = resolveCountry(options.country);
+  const fetchsize = Math.max(1, Math.min(options.limit ?? 20, 50));
+  const offset = Math.max(0, options.offset ?? 0);
+  const raw = await transport.request<any>("/q/api/search", {
+    host: "shop",
+    country: ctx.country,
+    language: ctx.language,
+    authMode: "none",
+    headers: {
+      Accept: "application/mindshift.search+json;version=2",
+    },
+    query: {
+      q: options.query,
+      fetchsize,
+      offset,
+      assortment: ctx.isoCountryCode,
+      locale: `${ctx.language}_${ctx.isoCountryCode}`,
+      version: "v2.0.0",
+    },
+  });
+
+  const items = Array.isArray(raw?.items) ? raw.items : [];
+  return {
+    country: ctx.country,
+    query: options.query,
+    total: typeof raw?.numFound === "number" ? raw.numFound : items.length,
+    offset,
+    limit: fetchsize,
+    products: items.map((item: any) =>
+      mapShopSearchProduct(item, ctx.shopBaseUrl)
+    ),
+  };
 }
 
 export async function getShopProduct(

@@ -43,7 +43,7 @@ A single `lidl-mcp` server supports both **Netherlands (`nl`)** and **Germany (`
 
 ---
 
-## 🛠️ MCP Tools (25 Tools)
+## 🛠️ MCP Tools (26 Tools)
 
 ### 1. Authentication, Profile & Loyalty
 | Tool | Type | Description |
@@ -69,6 +69,7 @@ A single `lidl-mcp` server supports both **Netherlands (`nl`)** and **Germany (`
 | `lidl_get_campaign_offers` | Read | Fetch all products and prices inside a digital leaflet campaign. |
 | `lidl_search_offers` | Read | Search across active weekly digital leaflet campaigns by keyword. |
 | `lidl_get_leaflet_product` | Read | Get full details, pricing, and disclaimers for a leaflet product ID. |
+| `lidl_search_shop_products` | Read | Search `lidl.nl` / `lidl.de` online shop assortment by keyword (returns ERP numbers). |
 | `lidl_get_shop_product` | Read | Fetch online shop product details by ERP number (`lidl.nl` / `lidl.de`). |
 
 ### 4. Coupons & Promotions

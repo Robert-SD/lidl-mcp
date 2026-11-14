@@ -142,7 +142,12 @@ const REST_GET_CACHE_POLICIES: Array<{
     pattern: /^\/api\/v4\/[a-z]{2}\/user\/promotions$/i,
     rule: { ttl: CACHE_TTL.liveList, shouldCache: (p) => Boolean(p && typeof p === "object") },
   },
-  // Shop product detail
+  // Shop search & product detail
+  {
+    host: "shop",
+    pattern: /^\/q\/api\/search$/i,
+    rule: { ttl: CACHE_TTL.search, shouldCache: (p) => Array.isArray(p?.items) },
+  },
   {
     host: "shop",
     pattern: /^\/p\/api\/detail\//i,

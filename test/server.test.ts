@@ -20,6 +20,7 @@ const EXPECTED_TOOLS = [
   "lidl_get_campaign_offers",
   "lidl_search_offers",
   "lidl_get_leaflet_product",
+  "lidl_search_shop_products",
   "lidl_get_shop_product",
   "lidl_get_coupons",
   "lidl_get_coupon_details",
@@ -42,7 +43,7 @@ const STATEFUL_TOOLS = [
   "lidl_set_receipt_favorite",
 ];
 
-test("createServer: registers all 25 Lidl tools with outputSchema", () => {
+test("createServer: registers all 26 Lidl tools with outputSchema", () => {
   const server = createServer();
   const registeredTools = (server as any)._registeredTools;
   const registered = Object.keys(registeredTools);

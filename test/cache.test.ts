@@ -133,6 +133,10 @@ test("cachePolicyFor caches reference/leaflet/receipts and uses liveList TTL for
     CACHE_TTL.liveList
   );
   assert.strictEqual(
+    cachePolicyFor("/q/api/search", { host: "shop", method: "GET" })?.ttl,
+    CACHE_TTL.search
+  );
+  assert.strictEqual(
     cachePolicyFor("/api/v3/nl/tickets/abc-123", { host: "tickets", method: "GET" })?.ttl,
     CACHE_TTL.receiptDetail
   );

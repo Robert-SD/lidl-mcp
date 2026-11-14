@@ -1,6 +1,6 @@
 {
   "name": "lidl-mcp",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Model Context Protocol (MCP) server for Lidl (Lidl Plus) - Digital receipts, coupons, offers, and grocery management",
   "main": "dist/index.js",
   "bin": {

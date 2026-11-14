@@ -6,6 +6,7 @@ import {
   mapCoupon,
   mapOfferProduct,
   mapReceipt,
+  mapShopSearchProduct,
   mapStore,
   parseHtmlReceiptLines,
 } from "../src/mappers.js";
@@ -70,6 +71,47 @@ test("mapOfferProduct maps mainPrice and campaign metadata", () => {
   assert.strictEqual(product.price?.discountLabel, "XXL");
   assert.strictEqual(product.campaignTitle, "Aanbiedingen");
   assert.deepStrictEqual(product.badges, [{ type: "AvailableInStore" }]);
+
+  const shopItem = mapShopSearchProduct(
+    {
+      gridbox: {
+        data: {
+          erpNumber: "100412387",
+          productId: 100412387,
+          title: "Boormachine opzetstukken",
+          fullTitle: "PARKSIDE® Boormachine opzetstukken",
+          brand: { name: "PARKSIDE®" },
+          category: "Assortiment/Tuin & Klussen",
+          price: {
+            price: 7.99,
+            oldPrice: 9.99,
+            currencySymbol: "€",
+            discount: { percentageDiscount: 20 },
+          },
+          stockAvailability: {
+            onlineAvailable: true,
+            badgeInfo: { badges: [{ text: "Op voorraad" }] },
+          },
+          canonicalPath: "/p/parkside-boormachine-opzetstukken/p100412387",
+        },
+      },
+    },
+    "https://www.lidl.nl"
+  );
+  assert.strictEqual(shopItem.erpNumber, "100412387");
+  assert.strictEqual(shopItem.brand, "PARKSIDE®");
+  assert.deepStrictEqual(shopItem.price, {
+    now: 7.99,
+    was: 9.99,
+    currency: "€",
+    discountLabel: "-20%",
+  });
+  assert.strictEqual(shopItem.onlineAvailable, true);
+  assert.strictEqual(shopItem.availabilityBadge, "Op voorraad");
+  assert.strictEqual(
+    shopItem.url,
+    "https://www.lidl.nl/p/parkside-boormachine-opzetstukken/p100412387"
+  );
 });
 
 test("mapCoupon, mapCampaign, mapBrochure, and mapReceipt normalize fields", () => {

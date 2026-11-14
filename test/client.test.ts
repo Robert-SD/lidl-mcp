@@ -106,8 +106,35 @@ test("LidlClient routes shop requests to country-specific lidl.nl / lidl.de", as
   const origFetch = globalThis.fetch;
   const seenUrls: string[] = [];
 
-  globalThis.fetch = (async (input: any) => {
+  globalThis.fetch = (async (input: any, init: any) => {
     seenUrls.push(String(input));
+    const url = String(input);
+    if (url.includes("/q/api/search")) {
+      assert.strictEqual(
+        init?.headers?.Accept,
+        "application/mindshift.search+json;version=2"
+      );
+      return new Response(
+        JSON.stringify({
+          numFound: 1,
+          items: [
+            {
+              gridbox: {
+                data: {
+                  erpNumber: "100397447",
+                  productId: 100397447,
+                  title: "Bohrmaschine",
+                  price: { price: 29.99, currencySymbol: "€" },
+                  stockAvailability: { onlineAvailable: true },
+                  canonicalPath: "/p/bohrmaschine/p100397447",
+                },
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
     return new Response(JSON.stringify({ title: "Product" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -118,9 +145,27 @@ test("LidlClient routes shop requests to country-specific lidl.nl / lidl.de", as
     const client = new LidlClient({}, new TtlCache());
     await client.getShopProduct({ productErp: "100356883", country: "nl" });
     await client.getShopProduct({ productErp: "100356883", country: "de" });
+    const searchRes = await client.searchShopProducts({
+      query: "bohrmaschine",
+      country: "de",
+      limit: 5,
+    });
+    // Repeat identical search to verify cache hit
+    await client.searchShopProducts({
+      query: "bohrmaschine",
+      country: "de",
+      limit: 5,
+    });
 
     assert.strictEqual(seenUrls[0], "https://www.lidl.nl/p/api/detail/100356883/NL/nl");
     assert.strictEqual(seenUrls[1], "https://www.lidl.de/p/api/detail/100356883/DE/de");
+    assert.strictEqual(seenUrls.length, 3);
+    assert.ok(seenUrls[2].startsWith("https://www.lidl.de/q/api/search?"));
+    assert.ok(seenUrls[2].includes("assortment=DE"));
+    assert.ok(seenUrls[2].includes("locale=de_DE"));
+    assert.strictEqual(searchRes.total, 1);
+    assert.strictEqual(searchRes.products[0].erpNumber, "100397447");
+    assert.strictEqual(client.cacheStats().hits, 1);
   } finally {
     globalThis.fetch = origFetch;
     setTokenStore(null);
