@@ -18,7 +18,7 @@ Public endpoints (stores, weekly leaflets, brochures, anonymous promotions) work
 ```bash
 npm run login
 ```
-* Launches Chrome via Playwright stealth to `accounts.lidl.com` (PKCE OAuth2) and captures the `https://lidlplus.com/mylidlprofile?deeplink=1` redirect automatically.
+* Launches Chrome via Playwright stealth to `accounts.lidl.com` (PKCE OAuth2) and captures the `com.lidlplus.app://callback` redirect automatically.
 * Headless/manual fallback: `npm run login -- --manual` (or `--country=de`).
 
 ### 3. Check Status

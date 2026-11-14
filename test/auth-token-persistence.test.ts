@@ -95,22 +95,21 @@ test("buildAuthorizeUrl includes Lidl OIDC PKCE and country params", () => {
   assert.strictEqual(url.searchParams.get("client_id"), "LidlPlusNativeClient");
   assert.strictEqual(
     url.searchParams.get("redirect_uri"),
-    "https://lidlplus.com/mylidlprofile?deeplink=1"
+    "com.lidlplus.app://callback"
   );
-  assert.strictEqual(url.searchParams.get("country_code"), "de");
-  assert.strictEqual(url.searchParams.get("language"), "de");
-  assert.strictEqual(url.searchParams.get("product"), "connect");
+  assert.strictEqual(url.searchParams.get("country_code"), "DE");
+  assert.strictEqual(url.searchParams.get("language"), "de-DE");
   assert.strictEqual(url.searchParams.get("code_challenge"), "challenge123");
   assert.strictEqual(url.searchParams.get("code_challenge_method"), "S256");
 });
 
 test("isAuthorizationRedirectUrl only matches redirect URI with code", () => {
   assert.strictEqual(
-    isAuthorizationRedirectUrl("https://lidlplus.com/mylidlprofile?deeplink=1&code=abc"),
+    isAuthorizationRedirectUrl("com.lidlplus.app://callback?code=abc&state=1"),
     true
   );
   assert.strictEqual(
-    isAuthorizationRedirectUrl("https://lidlplus.com/mylidlprofile?deeplink=1"),
+    isAuthorizationRedirectUrl("com.lidlplus.app://callback?state=1"),
     false
   );
   assert.strictEqual(
@@ -121,7 +120,7 @@ test("isAuthorizationRedirectUrl only matches redirect URI with code", () => {
 
 test("extractAuthCode and generatePkcePair work properly", () => {
   assert.strictEqual(
-    extractAuthCode("https://lidlplus.com/mylidlprofile?deeplink=1&code=xyz123&state=1"),
+    extractAuthCode("com.lidlplus.app://callback?code=xyz123&state=1"),
     "xyz123"
   );
   assert.strictEqual(extractAuthCode("raw-code"), "raw-code");

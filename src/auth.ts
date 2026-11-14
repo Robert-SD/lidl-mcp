@@ -29,7 +29,7 @@ export const AUTH_CONFIG = {
   auth_base: process.env.LIDL_AUTH_BASE || "https://accounts.lidl.com",
   client_id: process.env.LIDL_CLIENT_ID || "LidlPlusNativeClient",
   redirect_uri:
-    process.env.LIDL_REDIRECT_URI || "https://lidlplus.com/mylidlprofile?deeplink=1",
+    process.env.LIDL_REDIRECT_URI || "com.lidlplus.app://callback",
   authorize_path: "/connect/authorize",
   token_path: "/connect/token",
   userinfo_path: "/connect/userinfo",
@@ -97,9 +97,8 @@ export function buildAuthorizeUrl(options?: {
     redirect_uri: AUTH_CONFIG.redirect_uri,
     response_type: "code",
     scope: AUTH_CONFIG.scope,
-    country_code: ctx.country,
-    language: ctx.language,
-    product: "connect",
+    country_code: ctx.isoCountryCode,
+    language: ctx.locale.replace("_", "-"),
   });
   if (options?.codeChallenge) {
     params.set("code_challenge", options.codeChallenge);
@@ -286,7 +285,8 @@ export function isAuthorizationRedirectUrl(targetUrl: string): boolean {
     const expected = new URL(AUTH_CONFIG.redirect_uri);
     const actual = new URL(targetUrl);
     return (
-      actual.origin === expected.origin &&
+      actual.protocol === expected.protocol &&
+      actual.host === expected.host &&
       actual.pathname === expected.pathname &&
       actual.searchParams.has("code")
     );
