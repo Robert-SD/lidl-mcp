@@ -100,6 +100,7 @@ export async function activateCoupon(
       authMode: "required",
     }
   );
+  transport.invalidateCache("GET /app/api/v4/promotionslist");
   return {
     activated: true,
     promotionId: options.promotionId,
@@ -127,6 +128,7 @@ export async function deactivateCoupon(
       authMode: "required",
     }
   );
+  transport.invalidateCache("GET /app/api/v4/promotionslist");
   return {
     deactivated: true,
     promotionId: options.promotionId,
@@ -140,10 +142,21 @@ export async function getCouponPlus(
   country?: string
 ): Promise<any> {
   const ctx = resolveCountry(country);
-  return transport.request(`/api/v4/${ctx.country}/user/promotions`, {
-    host: "couponplus",
-    country: ctx.country,
-    language: ctx.language,
-    authMode: "required",
-  });
+  try {
+    return await transport.request(`/api/v4/${ctx.country}/user/promotions`, {
+      host: "couponplus",
+      country: ctx.country,
+      language: ctx.language,
+      authMode: "required",
+    });
+  } catch (err: any) {
+    if (err?.status === 404) {
+      return {
+        active: false,
+        country: ctx.country,
+        message: "No active Coupon Plus promotion found for this country.",
+      };
+    }
+    throw err;
+  }
 }

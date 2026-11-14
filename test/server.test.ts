@@ -29,9 +29,11 @@ const EXPECTED_TOOLS = [
   "lidl_get_receipt_details",
   "lidl_get_receipt_summary",
   "lidl_set_receipt_favorite",
+  "lidl_get_regular_products",
+  "lidl_plan_grocery_trip",
 ];
 
-test("createServer: registers all 23 Lidl tools", () => {
+test("createServer: registers all 25 Lidl tools", () => {
   const server = createServer();
   const registered = Object.keys((server as any)._registeredTools);
 

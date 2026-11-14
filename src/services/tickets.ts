@@ -66,7 +66,7 @@ export async function setReceiptFavorite(
 ): Promise<any> {
   const ctx = resolveCountry(options.country);
   const action = options.favorite ? "favorite" : "unfavorite";
-  return transport.request(`/api/v2/${ctx.country}/tickets/${action}`, {
+  const res = await transport.request(`/api/v2/${ctx.country}/tickets/${action}`, {
     host: "tickets",
     country: ctx.country,
     language: ctx.language,
@@ -74,4 +74,6 @@ export async function setReceiptFavorite(
     body: { ticketId: options.ticketId },
     authMode: "required",
   });
+  transport.invalidateCache(`GET /api/v3/${ctx.country}/tickets`);
+  return res;
 }

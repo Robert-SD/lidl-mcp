@@ -132,7 +132,7 @@ export async function setFavoriteStore(
   country?: string
 ): Promise<any> {
   const ctx = resolveCountry(country);
-  return transport.request(`/api/v1/users/me/favorite/${ctx.country}`, {
+  const res = await transport.request(`/api/v1/users/me/favorite/${ctx.country}`, {
     host: "stores",
     country: ctx.country,
     language: ctx.language,
@@ -140,4 +140,6 @@ export async function setFavoriteStore(
     body: { storeKey },
     authMode: "required",
   });
+  transport.invalidateCache(`GET /api/v1/users/me/favorite/${ctx.country}`);
+  return res;
 }

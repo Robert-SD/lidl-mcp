@@ -63,7 +63,7 @@ export class TtlCache {
     this.maxEntries =
       typeof requested === "number" && Number.isFinite(requested)
         ? Math.max(1, Math.floor(requested))
-        : 500;
+        : 2000;
     this.now = options.now ?? (() => Date.now());
   }
 
@@ -179,7 +179,7 @@ export function getSharedCache(): TtlCache {
   if (sharedCache === null) {
     sharedCache = new TtlCache({
       enabled: process.env.LIDL_MCP_CACHE !== "off",
-      maxEntries: Number(process.env.LIDL_MCP_CACHE_MAX_ENTRIES ?? 500),
+      maxEntries: Number(process.env.LIDL_MCP_CACHE_MAX_ENTRIES ?? 2000),
     });
   }
   return sharedCache;

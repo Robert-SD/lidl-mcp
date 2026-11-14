@@ -7,6 +7,7 @@ import {
   mapOfferProduct,
   mapReceipt,
   mapStore,
+  parseHtmlReceiptLines,
 } from "../src/mappers.js";
 import { resolveCountry } from "../src/countries.js";
 
@@ -105,4 +106,48 @@ test("mapCoupon, mapCampaign, mapBrochure, and mapReceipt normalize fields", () 
   assert.strictEqual(receipt.total, 12.5);
   assert.strictEqual(receipt.lines?.[0].price, 2.4);
   assert.strictEqual(receipt.lines?.[0].discount, 0.2);
+});
+
+test("parseHtmlReceiptLines and mapReceipt handle HTML receipts, discounts, weights, entities, and empty store name", () => {
+  const html = `
+<span class="purchase_list"><span id="purchase_list_line_1" class="currency">EUR</span>
+<span id="purchase_list_line_2" class="article css_bold" data-art-quantity="0,44" data-art-description="Kaasjong &szlig;" data-unit-price="14,90" data-tax-type="A">Kaasjong &szlig;              6,56 A</span>
+<span id="purchase_list_line_3" class="article" data-art-quantity="0,44" data-art-description="Kaasjong &szlig;" data-unit-price="14,90" data-tax-type="A">  0,440 kg x 14,90  EUR/kg</span>
+<span id="purchase_list_line_4" class="article" data-art-description="Bio K&auml;se" data-unit-price="1,69" data-tax-type="B">Bio K&auml;se       1,69 x   2    3,38 B</span>
+<span id="purchase_list_line_5" class="discount">  Lidl Plus korting            -0,50</span>
+<span id="purchase_list_line_6">Preisvorteil                  -0,25</span>
+</span><span class="purchase_summary"><span id="purchase_summary_5">Gesamter Preisvorteil 0,75</span></span>
+`;
+
+  const parsed = parseHtmlReceiptLines(html);
+  assert.strictEqual(parsed.lines.length, 2);
+  assert.deepStrictEqual(parsed.lines[0], {
+    description: "Kaasjong ß",
+    quantity: 0.44,
+    unitPrice: 14.9,
+    price: 6.56,
+    taxGroup: "A",
+  });
+  assert.deepStrictEqual(parsed.lines[1], {
+    description: "Bio Käse",
+    quantity: 2,
+    unitPrice: 1.69,
+    price: 3.38,
+    taxGroup: "B",
+    discount: 0.75,
+  });
+  assert.strictEqual(parsed.totalDiscount, 0.75);
+
+  const receipt = mapReceipt({
+    id: "t-html",
+    date: "2026-11-14T12:00:00Z",
+    totalAmount: "9,19",
+    store: { id: "DE1234", name: "", locality: "Berlin", address: "Hauptstr. 1" },
+    ticketType: "HTML",
+    htmlPrintedReceipt: html,
+  });
+  assert.strictEqual(receipt.storeName, "Lidl Berlin (Hauptstr. 1)");
+  assert.strictEqual(receipt.total, 9.19);
+  assert.strictEqual(receipt.totalDiscount, 0.75);
+  assert.strictEqual(receipt.lines?.length, 2);
 });

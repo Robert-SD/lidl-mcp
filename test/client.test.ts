@@ -126,3 +126,99 @@ test("LidlClient routes shop requests to country-specific lidl.nl / lidl.de", as
     setTokenStore(null);
   }
 });
+
+test("LidlClient handles uppercase country loyalty profile/summary, favorite-store stampcard lookup, and 404 couponPlus", async () => {
+  setTokenStore(
+    new MemoryTokenStore({
+      access_token: "fake-access-token",
+      refresh_token: "fake-refresh",
+      expires_at: Date.now() + 3600_000,
+    })
+  );
+  const origFetch = globalThis.fetch;
+  const seenUrls: string[] = [];
+
+  globalThis.fetch = (async (input: any) => {
+    const url = String(input);
+    seenUrls.push(url);
+
+    if (url === "https://accounts.test/connect/userinfo") {
+      return new Response(JSON.stringify({ name: "Test User", sub: "sub-1" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (url === "https://profile.test/api/v1/NL/loyalty") {
+      return new Response(JSON.stringify("00000000000000001"), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (url === "https://loyaltytab.test/api/v2/DE/summary") {
+      return new Response(JSON.stringify({ activated: [{ id: "a1" }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (url === "https://stores.test/api/v1/users/me/favorite/de") {
+      return new Response(JSON.stringify({ storeKey: "DE0123" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (url === "https://stampcard.test/api/v3/de/user/promotions?storeId=DE0123") {
+      return new Response(JSON.stringify([{ id: "sc1" }]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (url === "https://deposits.test/api/v1/de/deposits") {
+      return new Response(JSON.stringify({ total: 0 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (url === "https://couponplus.test/api/v4/nl/user/promotions") {
+      return new Response("Not Found", { status: 404 });
+    }
+    return new Response("Unexpected URL: " + url, { status: 500 });
+  }) as typeof fetch;
+
+  try {
+    const client = new LidlClient(
+      {
+        accounts: "https://accounts.test",
+        profile: "https://profile.test",
+        loyaltytab: "https://loyaltytab.test",
+        stores: "https://stores.test",
+        stampcard: "https://stampcard.test",
+        deposits: "https://deposits.test",
+        couponplus: "https://couponplus.test",
+      },
+      new TtlCache()
+    );
+
+    const profile = await client.getProfile("nl");
+    assert.strictEqual(profile.loyaltyCardNumber, "00000000000000001");
+    assert.strictEqual(profile.name, "Test User");
+
+    const summary = await client.getLoyaltySummary("de");
+    assert.deepStrictEqual(summary.loyaltySummary, { activated: [{ id: "a1" }] });
+    assert.strictEqual(summary.storeId, "DE0123");
+    assert.deepStrictEqual(summary.stampcards, [{ id: "sc1" }]);
+    assert.deepStrictEqual(summary.deposits, { total: 0 });
+
+    const couponPlus = await client.getCouponPlus("nl");
+    assert.strictEqual(couponPlus.active, false);
+    assert.strictEqual(couponPlus.country, "nl");
+
+    assert.ok(seenUrls.includes("https://accounts.test/connect/userinfo"));
+    assert.ok(seenUrls.includes("https://profile.test/api/v1/NL/loyalty"));
+    assert.ok(seenUrls.includes("https://loyaltytab.test/api/v2/DE/summary"));
+    assert.ok(seenUrls.includes("https://stores.test/api/v1/users/me/favorite/de"));
+    assert.ok(seenUrls.includes("https://stampcard.test/api/v3/de/user/promotions?storeId=DE0123"));
+  } finally {
+    globalThis.fetch = origFetch;
+    setTokenStore(null);
+  }
+});

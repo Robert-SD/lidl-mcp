@@ -157,3 +157,89 @@ export interface AuthSessionStatus {
   defaultCountry: string;
   defaultLanguage: string;
 }
+
+export interface RegularProductSummary {
+  normalizedName: string;
+  displayName: string;
+  aliases: string[];
+  purchaseCount: number;
+  totalQuantity: number;
+  averageUnitPrice: number;
+  lastUnitPrice: number;
+  averageLinePrice: number;
+  lastPurchasedDate: string;
+  daysSinceLastPurchase: number;
+  averageCadenceDays?: number;
+  dueForRestock: boolean;
+  taxGroup?: string;
+  storeIds: string[];
+}
+
+export interface RegularProductsResult {
+  country: string;
+  receiptsAvailable: number;
+  receiptsAnalyzed: number;
+  dateRange?: {
+    oldest: string;
+    newest: string;
+  };
+  minPurchases: number;
+  totalUniqueItems: number;
+  regularProducts: RegularProductSummary[];
+  note?: string;
+}
+
+export interface MatchedOfferSummary {
+  id: string;
+  title: string;
+  subtitle?: string;
+  brand?: string;
+  price?: LidlPrice;
+  campaignId?: string;
+  campaignTitle?: string;
+  matchScore: number;
+}
+
+export interface MatchedCouponSummary {
+  id: string;
+  promotionId?: string;
+  title: string;
+  discountTitle?: string;
+  discountDescription?: string;
+  isActivated: boolean;
+  startDate?: string;
+  endDate?: string;
+  matchScore: number;
+}
+
+export interface GroceryTripPlan {
+  country: string;
+  storeId?: string;
+  receiptsAnalyzed: number;
+  minPurchases: number;
+  campaignsChecked: number;
+  offersChecked: number;
+  couponsChecked: number;
+  couponsAnonymousFallback: boolean;
+  discountedRegulars: Array<{
+    regular: RegularProductSummary;
+    matchingOffers: MatchedOfferSummary[];
+    matchingCoupons: MatchedCouponSummary[];
+  }>;
+  requestedItemDeals: Array<{
+    query: string;
+    matchingOffers: MatchedOfferSummary[];
+    matchingCoupons: MatchedCouponSummary[];
+  }>;
+  dueForRestock: RegularProductSummary[];
+  otherRegulars: RegularProductSummary[];
+  unactivatedMatchingCoupons: Array<{
+    id: string;
+    promotionId?: string;
+    title: string;
+    discountTitle?: string;
+    endDate?: string;
+    matchedItems: string[];
+  }>;
+  note?: string;
+}

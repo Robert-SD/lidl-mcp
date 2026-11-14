@@ -14,16 +14,19 @@ import { HostKey, LidlTransport, RequestOptions } from "./services/transport.js"
 import * as coupons from "./services/coupons.js";
 import * as loyalty from "./services/loyalty.js";
 import * as offers from "./services/offers.js";
+import * as planner from "./services/planner.js";
 import * as stores from "./services/stores.js";
 import * as tickets from "./services/tickets.js";
 import {
   AuthSessionStatus,
+  GroceryTripPlan,
   LidlBrochure,
   LidlCampaign,
   LidlCoupon,
   LidlOfferProduct,
   MemberProfile,
   Receipt,
+  RegularProductsResult,
   StoreInfo,
 } from "./types.js";
 
@@ -361,4 +364,14 @@ export class LidlClient {
     favorite: boolean;
     country?: string;
   }): Promise<any> => tickets.setReceiptFavorite(this.transport, options);
+
+  // 6. Regular Products & Grocery Trip Planning (Per Country)
+  getRegularProducts = (
+    options?: planner.GetRegularProductsOptions
+  ): Promise<RegularProductsResult> =>
+    planner.getRegularProducts(this.transport, options);
+
+  planGroceryTrip = (
+    options?: planner.PlanGroceryTripOptions
+  ): Promise<GroceryTripPlan> => planner.planGroceryTrip(this.transport, options);
 }

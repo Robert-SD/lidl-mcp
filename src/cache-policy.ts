@@ -1,11 +1,13 @@
 import { cacheKey } from "./cache.js";
 
 /**
- * Cache TTLs in milliseconds. Only immutable or slow-moving upstream data is
- * cached — user state (profile, activated coupons, receipt overview, favorite
- * store) is always fetched live.
+ * Cache TTLs in milliseconds. Reference catalogs, leaflets, and immutable
+ * receipts use long/medium TTLs; live user lists (receipt index, coupons,
+ * favorite store) use a short TTL and are invalidated on write actions.
  */
 export const CACHE_TTL = {
+  /** Live user lists (receipt index, coupons, favorite store): short TTL, invalidated on writes. */
+  liveList: 2 * 60 * 1000,
   /** Search results and brochures/offers: churn daily/weekly. */
   search: 30 * 60 * 1000,
   /** Product detail: stable for a day. */
@@ -87,7 +89,18 @@ const REST_GET_CACHE_POLICIES: Array<{
     pattern: /^\/api\/v2\/[a-z]{2}\/Brochures/i,
     rule: { ttl: CACHE_TTL.offers, shouldCache: NON_EMPTY_ARRAY },
   },
-  // Anonymous promotions list
+  // Favorite store per country (invalidated on setFavoriteStore)
+  {
+    host: "stores",
+    pattern: /^\/api\/v1\/users\/me\/favorite\/[a-z]{2}$/i,
+    rule: { ttl: CACHE_TTL.liveList, shouldCache: (p) => Boolean(p && typeof p === "object") },
+  },
+  // Authenticated & anonymous promotions list (invalidated on activate/deactivate)
+  {
+    host: "coupons",
+    pattern: /^\/app\/api\/v4\/promotionslist$/i,
+    rule: { ttl: CACHE_TTL.liveList, shouldCache: (p) => Array.isArray(p?.sections) },
+  },
   {
     host: "coupons",
     pattern: /^\/app\/api\/v4\/promotionslist\/anonymous$/i,
@@ -99,7 +112,15 @@ const REST_GET_CACHE_POLICIES: Array<{
     pattern: /^\/p\/api\/detail\//i,
     rule: { ttl: CACHE_TTL.productDetail, shouldCache: (p) => Boolean(p && typeof p === "object") },
   },
-  // Closed receipt details & summaries (note: tickets list itself stays live)
+  // Receipt overview list (short TTL; invalidated on favorite toggle) + immutable details/summaries
+  {
+    host: "tickets",
+    pattern: /^\/api\/v3\/[a-z]{2}\/tickets$/i,
+    rule: {
+      ttl: CACHE_TTL.liveList,
+      shouldCache: (p) => Array.isArray(p) || Array.isArray(p?.tickets),
+    },
+  },
   {
     host: "tickets",
     pattern: /^\/api\/v3\/[a-z]{2}\/tickets\/[^/]+(\/summary)?$/i,
@@ -140,9 +161,13 @@ export function cacheKeyFor(
   const method = (options.method || "GET").toUpperCase();
   const country = (options.country || "").toLowerCase();
   const language = (options.language || "").toLowerCase();
-  const extraHeaders = options.host === "stores" && (options as any).headers?.storesIds
-    ? { storesIds: (options as any).headers.storesIds }
-    : undefined;
+  const reqHeaders = (options as any).headers as Record<string, string> | undefined;
+  const extraHeaders =
+    options.host === "stores" && reqHeaders?.storesIds
+      ? { storesIds: reqHeaders.storesIds }
+      : options.host === "coupons" && (reqHeaders?.["Store-Id"] || reqHeaders?.Zone)
+        ? { storeId: reqHeaders["Store-Id"], zone: reqHeaders.Zone }
+        : undefined;
 
   if (method === "GET") {
     const query = Object.entries(options.query ?? {})

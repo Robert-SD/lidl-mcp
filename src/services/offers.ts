@@ -86,6 +86,47 @@ export async function getCampaignOffers(
   };
 }
 
+export async function fetchActiveOffersPool(
+  transport: LidlTransport,
+  options: {
+    country?: string;
+    storeId?: string;
+    maxCampaigns?: number;
+  } = {}
+): Promise<{
+  country: string;
+  storeId?: string;
+  campaignsChecked: number;
+  products: LidlOfferProduct[];
+}> {
+  const ctx = resolveCountry(options.country);
+  const maxCampaigns = Math.max(1, Math.min(options.maxCampaigns ?? 8, 20));
+  const groups = await getCampaignGroups(transport, {
+    country: ctx.country,
+    storeId: options.storeId,
+  });
+
+  const campaigns = groups.flatMap((g) => g.campaigns).slice(0, maxCampaigns);
+  const details = await mapWithConcurrency(campaigns, 4, async (c) => {
+    try {
+      return await getCampaignOffers(transport, {
+        campaignId: c.id,
+        country: ctx.country,
+        storeId: options.storeId,
+      });
+    } catch {
+      return { id: c.id, title: c.title, products: [] };
+    }
+  });
+
+  return {
+    country: ctx.country,
+    storeId: options.storeId,
+    campaignsChecked: campaigns.length,
+    products: details.flatMap((d) => d.products),
+  };
+}
+
 export async function searchOffers(
   transport: LidlTransport,
   options: {
@@ -103,38 +144,24 @@ export async function searchOffers(
 }> {
   const ctx = resolveCountry(options.country);
   const limit = Math.max(1, Math.min(options.limit ?? 30, 200));
-  const groups = await getCampaignGroups(transport, {
+  const pool = await fetchActiveOffersPool(transport, {
     country: ctx.country,
     storeId: options.storeId,
   });
 
-  const campaigns = groups.flatMap((g) => g.campaigns).slice(0, 8);
-  const details = await mapWithConcurrency(campaigns, 4, async (c) => {
-    try {
-      return await getCampaignOffers(transport, {
-        campaignId: c.id,
-        country: ctx.country,
-        storeId: options.storeId,
-      });
-    } catch {
-      return { id: c.id, title: c.title, products: [] };
-    }
-  });
-
-  const allProducts = details.flatMap((d) => d.products);
   const q = (options.query || "").trim().toLowerCase();
   const matched = q
-    ? allProducts.filter((p) =>
+    ? pool.products.filter((p) =>
         `${p.title} ${p.subtitle || ""} ${p.brand || ""} ${p.additionalInfo || ""}`
           .toLowerCase()
           .includes(q)
       )
-    : allProducts;
+    : pool.products;
 
   return {
-    country: ctx.country,
-    storeId: options.storeId,
-    campaignsChecked: campaigns.length,
+    country: pool.country,
+    storeId: pool.storeId,
+    campaignsChecked: pool.campaignsChecked,
     total: matched.length,
     offers: matched.slice(0, limit),
   };

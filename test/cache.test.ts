@@ -51,7 +51,7 @@ test("TtlCache respects TTL, LRU eviction, invalidate, and wrap coalescing", asy
   assert.strictEqual(cache.stats().evictions, 1);
 });
 
-test("cacheKeyFor isolates countries, languages, and scopes", () => {
+test("cacheKeyFor isolates countries, languages, coupons Store-Id/Zone, and scopes", () => {
   const nlKey = cacheKeyFor(
     "https://coupons.lidlplus.com",
     "/app/api/v4/promotionslist/anonymous",
@@ -64,12 +64,37 @@ test("cacheKeyFor isolates countries, languages, and scopes", () => {
     { host: "coupons", country: "de", language: "de", method: "GET" },
     "anonymous"
   );
+  const storeAKey = cacheKeyFor(
+    "https://coupons.lidlplus.com",
+    "/app/api/v4/promotionslist",
+    {
+      host: "coupons",
+      country: "nl",
+      language: "nl",
+      method: "GET",
+      headers: { "Store-Id": "NL0100" },
+    } as any,
+    "user-1"
+  );
+  const storeBKey = cacheKeyFor(
+    "https://coupons.lidlplus.com",
+    "/app/api/v4/promotionslist",
+    {
+      host: "coupons",
+      country: "nl",
+      language: "nl",
+      method: "GET",
+      headers: { "Store-Id": "NL0200" },
+    } as any,
+    "user-1"
+  );
 
   assert.notStrictEqual(nlKey, deKey);
+  assert.notStrictEqual(storeAKey, storeBKey);
   assert.ok(cacheKey("GET /x", [1]).startsWith("GET /x "));
 });
 
-test("cachePolicyFor caches reference/leaflet/receipt-detail endpoints and keeps live endpoints uncached", () => {
+test("cachePolicyFor caches reference/leaflet/receipts and uses liveList TTL for user overviews while keeping writes uncached", () => {
   assert.strictEqual(
     cachePolicyFor("/api/v4/nl", { host: "stores", method: "GET" })?.ttl,
     CACHE_TTL.catalog
@@ -82,13 +107,20 @@ test("cachePolicyFor caches reference/leaflet/receipt-detail endpoints and keeps
     cachePolicyFor("/api/v3/nl/tickets/abc-123", { host: "tickets", method: "GET" })?.ttl,
     CACHE_TTL.receiptDetail
   );
-  // Ticket list & authenticated coupon list must stay live
   assert.strictEqual(
-    cachePolicyFor("/api/v3/nl/tickets", { host: "tickets", method: "GET" }),
-    null
+    cachePolicyFor("/api/v3/nl/tickets", { host: "tickets", method: "GET" })?.ttl,
+    CACHE_TTL.liveList
   );
   assert.strictEqual(
-    cachePolicyFor("/app/api/v4/promotionslist", { host: "coupons", method: "GET" }),
+    cachePolicyFor("/app/api/v4/promotionslist", { host: "coupons", method: "GET" })?.ttl,
+    CACHE_TTL.liveList
+  );
+  assert.strictEqual(
+    cachePolicyFor("/api/v1/users/me/favorite/nl", { host: "stores", method: "GET" })?.ttl,
+    CACHE_TTL.liveList
+  );
+  assert.strictEqual(
+    cachePolicyFor("/app/api/v2/promotions/123/activation", { host: "coupons", method: "POST" }),
     null
   );
 });

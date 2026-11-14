@@ -43,7 +43,7 @@ A single `lidl-mcp` server supports both **Netherlands (`nl`)** and **Germany (`
 
 ---
 
-## 🛠️ MCP Tools (23 Tools)
+## 🛠️ MCP Tools (25 Tools)
 
 ### 1. Authentication, Profile & Loyalty
 | Tool | Type | Description |
@@ -88,6 +88,12 @@ A single `lidl-mcp` server supports both **Netherlands (`nl`)** and **Germany (`
 | `lidl_get_receipt_summary` | Read | Get receipt summary breakdown (cached 30d). |
 | `lidl_set_receipt_favorite` | Write | Favorite or unfavorite a digital receipt. |
 
+### 6. Grocery Trip Planning & Purchase History (Per Country)
+| Tool | Type | Description |
+| :--- | :---: | :--- |
+| `lidl_get_regular_products` | Read | Analyze past receipts for one country (`nl` or `de`) to find regular purchases, cadence, and restock candidates. |
+| `lidl_plan_grocery_trip` | Read | Match regular purchases and optional extra items in one country against weekly leaflet offers and coupons. |
+
 ---
 
 ## ⚙️ Environment Variables
@@ -101,7 +107,7 @@ A single `lidl-mcp` server supports both **Netherlands (`nl`)** and **Germany (`
 | `LIDL_TOKEN_STORE_URL` | Optional HTTP endpoint for external token persistence. |
 | `LIDL_TOKEN_STORE_AUTH` | Optional `Authorization` header for `LIDL_TOKEN_STORE_URL`. |
 | `LIDL_MCP_CACHE` | Set to `off` to disable the in-process TTL response cache. |
-| `LIDL_MCP_CACHE_MAX_ENTRIES` | Maximum cached entries (default: `500`). |
+| `LIDL_MCP_CACHE_MAX_ENTRIES` | Maximum cached entries (default: `2000`). |
 | `LIDL_HEADLESS` | Set to `true` to run Playwright login browser headless. |
 
 ---

@@ -11,6 +11,7 @@ import { registerAccountTools } from "./tools/account.js";
 import { registerCouponTools } from "./tools/coupons.js";
 import { toolError } from "./tools/helpers.js";
 import { registerOfferTools } from "./tools/offers.js";
+import { registerPlannerTools } from "./tools/planner.js";
 import { registerReceiptTools } from "./tools/receipts.js";
 import { registerStoreTools } from "./tools/stores.js";
 
@@ -46,6 +47,7 @@ export function createServer(customClient?: LidlClient): McpServer {
   registerOfferTools(server, c);
   registerCouponTools(server, c);
   registerReceiptTools(server, c);
+  registerPlannerTools(server, c);
 
   return server;
 }

@@ -143,31 +143,168 @@ function parseNumeric(val: unknown): number | undefined {
   return undefined;
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&szlig;/g, "ß")
+    .replace(/&auml;/g, "ä")
+    .replace(/&ouml;/g, "ö")
+    .replace(/&uuml;/g, "ü")
+    .replace(/&Auml;/g, "Ä")
+    .replace(/&Ouml;/g, "Ö")
+    .replace(/&Uuml;/g, "Ü")
+    .replace(/&amp;/g, "&")
+    .replace(/&euro;/g, "€")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+}
+
+function extractAttr(attrs: string, name: string): string | undefined {
+  const re = new RegExp(`${name}="([^"]*)"`, "i");
+  const m = attrs.match(re);
+  return m ? decodeHtmlEntities(m[1]) : undefined;
+}
+
+/**
+ * Parse Lidl HTML receipt (`htmlPrintedReceipt`) lines from `<span class="purchase_list">`.
+ * Handles single articles, `unitPrice x qty` lines, weighted sublines, and `class="discount"` lines.
+ */
+export function parseHtmlReceiptLines(html: string): {
+  lines: ReceiptLine[];
+  totalDiscount?: number;
+} {
+  const start = html.indexOf('<span class="purchase_list">');
+  if (start < 0) return { lines: [] };
+  const stopMarkers = [
+    '<span class="purchase_summary">',
+    '<span class="total_payment">',
+    '<span class="vat_info">',
+  ];
+  const stopIndices = stopMarkers
+    .map((m) => html.indexOf(m, start))
+    .filter((i) => i > start);
+  const end = stopIndices.length > 0 ? Math.min(...stopIndices) : html.length;
+  const block = html.slice(start, end);
+
+  const rawLines = block.split(/\r?\n/);
+  const lines: ReceiptLine[] = [];
+  let sumDiscount = 0;
+
+  for (const rawLine of rawLines) {
+    const spanMatch = rawLine.match(/<span\b([^>]*)>/i);
+    if (!spanMatch) continue;
+    const attrs = spanMatch[1];
+    const classAttr = extractAttr(attrs, "class") || "";
+    const plain = decodeHtmlEntities(rawLine.replace(/<[^>]+>/g, "")).trim();
+    if (!plain) continue;
+
+    if (lines.length > 0 && /\bkg\s*x\s*\d+,\d{2}/i.test(plain)) {
+      // Weighted sub-line (also carries class="article" on live HTML receipts)
+      const weightMatch = plain.match(/(\d+,\d+)\s*kg\s*x\s*(\d+,\d{2})/i);
+      if (weightMatch) {
+        const prev = lines[lines.length - 1];
+        prev.quantity = parseNumeric(weightMatch[1]) ?? prev.quantity;
+        prev.unitPrice = parseNumeric(weightMatch[2]) ?? prev.unitPrice;
+      }
+    } else if (classAttr.includes("article")) {
+      const description =
+        extractAttr(attrs, "data-art-description") ||
+        plain.replace(/\s+\d+,\d{2}\s*[A-Z]?\s*$/, "").trim();
+      const unitPrice = parseNumeric(extractAttr(attrs, "data-unit-price"));
+      const dataQty = parseNumeric(extractAttr(attrs, "data-art-quantity"));
+      const taxGroup = extractAttr(attrs, "data-tax-type");
+
+      // Match `1,69 x   2    3,38 A` or `2,39 B`
+      const qtyMatch = plain.match(
+        /(\d+,\d{2})\s*x\s*(\d+)\s+(-?\d+,\d{2})\s*([A-Z])?\s*$/i
+      );
+      if (qtyMatch) {
+        lines.push({
+          description,
+          quantity: Number(qtyMatch[2]),
+          unitPrice: parseNumeric(qtyMatch[1]) ?? unitPrice,
+          price: parseNumeric(qtyMatch[3]) ?? unitPrice ?? 0,
+          taxGroup,
+        });
+      } else {
+        const priceMatch = plain.match(/(-?\d+,\d{2})\s*([A-Z])?\s*$/);
+        const price = priceMatch ? parseNumeric(priceMatch[1]) : unitPrice;
+        lines.push({
+          description,
+          quantity: dataQty ?? 1,
+          unitPrice,
+          price: price ?? 0,
+          taxGroup,
+        });
+      }
+    } else if (
+      classAttr.includes("discount") ||
+      /-\d+,\d{2}\s*$/.test(plain)
+    ) {
+      const amtMatch = plain.match(/(-\d+,\d{2})/);
+      const amt = amtMatch ? Math.abs(parseNumeric(amtMatch[1]) ?? 0) : 0;
+      if (amt > 0 && lines.length > 0) {
+        const prev = lines[lines.length - 1];
+        prev.discount = Number(((prev.discount ?? 0) + amt).toFixed(2));
+        sumDiscount += amt;
+      }
+    }
+  }
+
+  return {
+    lines,
+    totalDiscount: sumDiscount > 0 ? Number(sumDiscount.toFixed(2)) : undefined,
+  };
+}
+
 export function mapReceipt(raw: any): Receipt {
   const rawLines = raw?.itemsLine || raw?.lines || raw?.items || [];
-  const lines: ReceiptLine[] | undefined = Array.isArray(rawLines) && rawLines.length > 0
-    ? rawLines.map((l: any) => {
-        const discount = Array.isArray(l?.discounts)
-          ? l.discounts.reduce(
-              (acc: number, d: any) => acc + Math.abs(parseNumeric(d?.amount) ?? 0),
-              0
-            )
-          : parseNumeric(l?.discount);
+  let lines: ReceiptLine[] | undefined =
+    Array.isArray(rawLines) && rawLines.length > 0
+      ? rawLines.map((l: any) => {
+          const discount = Array.isArray(l?.discounts)
+            ? l.discounts.reduce(
+                (acc: number, d: any) =>
+                  acc + Math.abs(parseNumeric(d?.amount) ?? 0),
+                0
+              )
+            : parseNumeric(l?.discount);
 
-        return {
-          description: String(l?.description || l?.name || l?.articleName || ""),
-          quantity: parseNumeric(l?.quantity) ?? 1,
-          price:
-            parseNumeric(l?.extendedAmount) ??
-            parseNumeric(l?.totalAmount) ??
-            parseNumeric(l?.price) ??
-            0,
-          discount: discount && discount > 0 ? Number(discount.toFixed(2)) : undefined,
-          unitPrice: parseNumeric(l?.currentUnitPrice) ?? parseNumeric(l?.unitPrice),
-          taxGroup: l?.taxGroupName || l?.taxGroup || undefined,
-        };
-      })
-    : undefined;
+          return {
+            description: String(
+              l?.description || l?.name || l?.articleName || ""
+            ),
+            quantity: parseNumeric(l?.quantity) ?? 1,
+            price:
+              parseNumeric(l?.extendedAmount) ??
+              parseNumeric(l?.totalAmount) ??
+              parseNumeric(l?.price) ??
+              0,
+            discount:
+              discount && discount > 0 ? Number(discount.toFixed(2)) : undefined,
+            unitPrice:
+              parseNumeric(l?.currentUnitPrice) ?? parseNumeric(l?.unitPrice),
+            taxGroup: l?.taxGroupName || l?.taxGroup || undefined,
+          };
+        })
+      : undefined;
+
+  let htmlTotalDiscount: number | undefined;
+  if ((!lines || lines.length === 0) && typeof raw?.htmlPrintedReceipt === "string") {
+    const parsed = parseHtmlReceiptLines(raw.htmlPrintedReceipt);
+    if (parsed.lines.length > 0) {
+      lines = parsed.lines;
+      htmlTotalDiscount = parsed.totalDiscount;
+    }
+  }
+
+  const storeObj = raw?.store;
+  const storeName =
+    storeObj?.name ||
+    (storeObj?.locality && storeObj?.address
+      ? `Lidl ${storeObj.locality} (${storeObj.address})`
+      : storeObj?.locality) ||
+    raw?.storeName ||
+    undefined;
 
   return {
     id: String(raw?.id || raw?.ticketId || ""),
@@ -175,10 +312,15 @@ export function mapReceipt(raw: any): Receipt {
     total:
       parseNumeric(raw?.totalAmount?.value ?? raw?.totalAmount ?? raw?.total) ?? 0,
     totalDiscount:
-      parseNumeric(raw?.totalDiscount?.value ?? raw?.totalDiscount ?? raw?.totalSavings),
+      parseNumeric(
+        raw?.totalDiscount?.value ??
+          raw?.totalDiscount ??
+          raw?.totalSavings ??
+          raw?.savings
+      ) ?? htmlTotalDiscount,
     currency: raw?.currency?.symbol || raw?.currency || "EUR",
-    storeId: raw?.store?.id || raw?.storeCode || raw?.storeId || undefined,
-    storeName: raw?.store?.name || raw?.storeName || undefined,
+    storeId: storeObj?.id || raw?.storeCode || raw?.storeId || undefined,
+    storeName,
     isFavorite: typeof raw?.isFavorite === "boolean" ? raw.isFavorite : undefined,
     lines,
   };
