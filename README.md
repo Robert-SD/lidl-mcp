@@ -32,6 +32,17 @@ npm run build
 npm test
 ```
 
+### 5. Run as Persistent Streamable HTTP Server (Optional)
+For shared cross-session response caching and zero per-call startup overhead:
+```bash
+npm run start:http -- --host 127.0.0.1 --port 3000
+# or:
+MCP_TRANSPORT=http MCP_HTTP_HOST=0.0.0.0 MCP_HTTP_PORT=8090 node dist/index.js
+```
+Endpoints:
+- `POST/GET/DELETE /mcp` (configurable via `--path` / `MCP_HTTP_PATH`, optional bearer auth via `MCP_HTTP_AUTH_TOKEN`)
+- `GET /healthz` (process health, active session count, and shared cache stats)
+
 ---
 
 ## 🌍 Multi-Country Support (`nl` & `de`)
@@ -110,6 +121,12 @@ A single `lidl-mcp` server supports both **Netherlands (`nl`)** and **Germany (`
 | `LIDL_MCP_CACHE` | Set to `off` to disable the in-process TTL response cache. |
 | `LIDL_MCP_CACHE_MAX_ENTRIES` | Maximum cached entries (default: `2000`). |
 | `LIDL_HEADLESS` | Set to `true` to run Playwright login browser headless. |
+| `MCP_TRANSPORT` | Set to `http` to run the Streamable HTTP server instead of stdio. |
+| `MCP_HTTP_HOST` | Bind address in HTTP mode (default: `127.0.0.1`). |
+| `MCP_HTTP_PORT` | Listen port in HTTP mode (falls back to `PORT`, default: `3000`). |
+| `MCP_HTTP_PATH` | MCP HTTP endpoint path (default: `/mcp`). |
+| `MCP_HTTP_AUTH_TOKEN` | Optional Bearer token required on the MCP HTTP endpoint. |
+| `MCP_HTTP_SESSION_IDLE_MS` | Idle session expiry in ms (default: `1800000` / 30 min). |
 
 ---
 
