@@ -5,12 +5,16 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
   FileTokenStore,
-  LidlAuthError,
   MemoryTokenStore,
   getTokensFilePath,
   resolveRefreshToken,
 } from "../src/token-store.js";
-import { buildAuthorizeUrl, extractAuthCode, generatePkcePair } from "../src/auth.js";
+import {
+  buildAuthorizeUrl,
+  extractAuthCode,
+  generatePkcePair,
+  isAuthorizationRedirectUrl,
+} from "../src/auth.js";
 
 test("FileTokenStore persists tokens with 0600 mode and supports locking", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "lidl-mcp-test-"));
@@ -82,15 +86,44 @@ test("MemoryTokenStore serializes withLock calls", async () => {
   assert.deepStrictEqual(order, [1, 2]);
 });
 
-test("buildAuthorizeUrl throws AUTH_NOT_CONFIGURED until OAuth endpoints are set", () => {
-  assert.throws(
-    () => buildAuthorizeUrl(),
-    (err: unknown) => err instanceof LidlAuthError && err.code === "AUTH_NOT_CONFIGURED"
+test("buildAuthorizeUrl includes Lidl OIDC PKCE and country params", () => {
+  const url = new URL(
+    buildAuthorizeUrl({ codeChallenge: "challenge123", state: "st1", country: "de" })
+  );
+  assert.strictEqual(url.origin, "https://accounts.lidl.com");
+  assert.strictEqual(url.pathname, "/connect/authorize");
+  assert.strictEqual(url.searchParams.get("client_id"), "LidlPlusNativeClient");
+  assert.strictEqual(
+    url.searchParams.get("redirect_uri"),
+    "https://lidlplus.com/mylidlprofile?deeplink=1"
+  );
+  assert.strictEqual(url.searchParams.get("country_code"), "de");
+  assert.strictEqual(url.searchParams.get("language"), "de");
+  assert.strictEqual(url.searchParams.get("product"), "connect");
+  assert.strictEqual(url.searchParams.get("code_challenge"), "challenge123");
+  assert.strictEqual(url.searchParams.get("code_challenge_method"), "S256");
+});
+
+test("isAuthorizationRedirectUrl only matches redirect URI with code", () => {
+  assert.strictEqual(
+    isAuthorizationRedirectUrl("https://lidlplus.com/mylidlprofile?deeplink=1&code=abc"),
+    true
+  );
+  assert.strictEqual(
+    isAuthorizationRedirectUrl("https://lidlplus.com/mylidlprofile?deeplink=1"),
+    false
+  );
+  assert.strictEqual(
+    isAuthorizationRedirectUrl("https://accounts.lidl.com/connect/authorize?code=abc"),
+    false
   );
 });
 
 test("extractAuthCode and generatePkcePair work properly", () => {
-  assert.strictEqual(extractAuthCode("lidlplus://callback?code=xyz123&state=1"), "xyz123");
+  assert.strictEqual(
+    extractAuthCode("https://lidlplus.com/mylidlprofile?deeplink=1&code=xyz123&state=1"),
+    "xyz123"
+  );
   assert.strictEqual(extractAuthCode("raw-code"), "raw-code");
 
   const pkce = generatePkcePair();

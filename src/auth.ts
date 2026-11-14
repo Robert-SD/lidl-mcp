@@ -5,6 +5,7 @@ import * as path from "node:path";
 import * as readline from "node:readline/promises";
 import { exec } from "node:child_process";
 import * as https from "node:https";
+import { getDefaultCountry, resolveCountry } from "./countries.js";
 import { AuthSessionStatus, TokensData } from "./types.js";
 import {
   LidlAuthError,
@@ -24,23 +25,37 @@ import {
 
 export * from "./token-store.js";
 
-/**
- * Lidl Plus authentication & API configuration.
- * Populate `auth_base`, `api_base`, `client_id`, and `redirect_uri` once the
- * Lidl endpoints are wired in (or override via environment variables).
- */
 export const AUTH_CONFIG = {
-  auth_base: process.env.LIDL_AUTH_BASE || "",
-  api_base: process.env.LIDL_API_BASE || "",
-  client_id: process.env.LIDL_CLIENT_ID || "",
-  redirect_uri: process.env.LIDL_REDIRECT_URI || "",
+  auth_base: process.env.LIDL_AUTH_BASE || "https://accounts.lidl.com",
+  client_id: process.env.LIDL_CLIENT_ID || "LidlPlusNativeClient",
+  redirect_uri:
+    process.env.LIDL_REDIRECT_URI || "https://lidlplus.com/mylidlprofile?deeplink=1",
   authorize_path: "/connect/authorize",
   token_path: "/connect/token",
-  scope: process.env.LIDL_OAUTH_SCOPE || "openid profile offline_access lpprofile lpapis",
-  user_agent: process.env.LIDL_USER_AGENT || "LidlPlus/16.0.0",
-  country: process.env.LIDL_COUNTRY || "NL",
-  language: process.env.LIDL_LANGUAGE || "nl-NL",
+  userinfo_path: "/connect/userinfo",
+  scope:
+    process.env.LIDL_OAUTH_SCOPE || "openid profile offline_access lpprofile lpapis",
+  app_version: process.env.LIDL_APP_VERSION || "17.14.6",
+  sdk_version: process.env.LIDL_SDK_VERSION || "8.7.10",
+  operating_system: "Android",
+  tenant: "lidl",
+  user_agent: process.env.LIDL_USER_AGENT || "LidlPlus/17.14.6 (Android 14)",
 };
+
+export const HOST_CONFIG = {
+  accounts: AUTH_CONFIG.auth_base,
+  coupons: process.env.LIDL_COUPONS_BASE || "https://coupons.lidlplus.com",
+  tickets: process.env.LIDL_TICKETS_BASE || "https://tickets.lidlplus.com",
+  stores: process.env.LIDL_STORES_BASE || "https://stores.lidlplus.com",
+  profile: process.env.LIDL_PROFILE_BASE || "https://profile.lidlplus.com",
+  home: process.env.LIDL_HOME_BASE || "https://home.lidlplus.com",
+  leaflet: process.env.LIDL_LEAFLET_BASE || "https://digital-leaflet.lidlplus.com",
+  brochures: process.env.LIDL_BROCHURES_BASE || "https://brochures.lidlplus.com",
+  loyaltytab: process.env.LIDL_LOYALTYTAB_BASE || "https://loyaltytab.lidlplus.com",
+  stampcard: process.env.LIDL_STAMPCARD_BASE || "https://stampcard.lidlplus.com",
+  deposits: process.env.LIDL_DEPOSITS_BASE || "https://deposits.lidlplus.com",
+  couponplus: process.env.LIDL_COUPONPLUS_BASE || "https://couponplus.lidlplus.com",
+} as const;
 
 export function isAuthConfigured(): boolean {
   return Boolean(
@@ -51,7 +66,7 @@ export function isAuthConfigured(): boolean {
 }
 
 export function isApiConfigured(): boolean {
-  return Boolean(AUTH_CONFIG.api_base);
+  return Boolean(HOST_CONFIG.stores && HOST_CONFIG.coupons && HOST_CONFIG.tickets);
 }
 
 export function generatePkcePair(): { codeVerifier: string; codeChallenge: string } {
@@ -66,19 +81,25 @@ export function generatePkcePair(): { codeVerifier: string; codeChallenge: strin
 export function buildAuthorizeUrl(options?: {
   codeChallenge?: string;
   state?: string;
+  country?: string;
+  language?: string;
 }): string {
   if (!isAuthConfigured()) {
     throw new LidlAuthError(
       "AUTH_NOT_CONFIGURED",
-      "Lidl OAuth configuration is not set yet. Populate AUTH_CONFIG (or LIDL_AUTH_BASE, LIDL_CLIENT_ID, LIDL_REDIRECT_URI)."
+      "Lidl OAuth configuration is not set."
     );
   }
 
+  const ctx = resolveCountry(options?.country, options?.language);
   const params = new URLSearchParams({
     client_id: AUTH_CONFIG.client_id,
     redirect_uri: AUTH_CONFIG.redirect_uri,
     response_type: "code",
     scope: AUTH_CONFIG.scope,
+    country_code: ctx.country,
+    language: ctx.language,
+    product: "connect",
   });
   if (options?.codeChallenge) {
     params.set("code_challenge", options.codeChallenge);
@@ -92,7 +113,7 @@ export function buildAuthorizeUrl(options?: {
 }
 
 /**
- * Resilient fetch for Lidl API requests with mobile headers and curl/https fallback.
+ * Resilient fetch for Lidl API requests with mobile user-agent and https/curl fallback.
  */
 export async function authFetch(
   urlStr: string,
@@ -102,10 +123,11 @@ export async function authFetch(
     throw options.signal.reason || new Error("The operation was aborted");
   }
 
+  const ctx = resolveCountry();
   let lastErr: any = null;
   const mergedHeaders: Record<string, string> = {
     "User-Agent": AUTH_CONFIG.user_agent,
-    "Accept-Language": AUTH_CONFIG.language,
+    "Accept-Language": ctx.language,
     ...(options.headers || {}),
   };
 
@@ -259,6 +281,20 @@ export function extractAuthCode(codeOrUrl: string): string {
   return trimmed;
 }
 
+export function isAuthorizationRedirectUrl(targetUrl: string): boolean {
+  try {
+    const expected = new URL(AUTH_CONFIG.redirect_uri);
+    const actual = new URL(targetUrl);
+    return (
+      actual.origin === expected.origin &&
+      actual.pathname === expected.pathname &&
+      actual.searchParams.has("code")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function exchangeCode(
   codeOrUrl: string,
   opts: { save?: boolean; codeVerifier?: string } = {}
@@ -266,7 +302,7 @@ export async function exchangeCode(
   if (!isAuthConfigured()) {
     throw new LidlAuthError(
       "AUTH_NOT_CONFIGURED",
-      "Lidl OAuth configuration is not set yet. Populate AUTH_CONFIG before exchanging an authorization code."
+      "Lidl OAuth configuration is not set."
     );
   }
 
@@ -284,7 +320,10 @@ export async function exchangeCode(
 
   const resp = await authFetch(tokenUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
     body: form.toString(),
   });
 
@@ -313,7 +352,7 @@ export async function refreshTokens(existing?: TokensData): Promise<TokensData> 
   if (!isAuthConfigured()) {
     throw new LidlAuthError(
       "AUTH_NOT_CONFIGURED",
-      "Lidl OAuth configuration is not set yet. Populate AUTH_CONFIG before refreshing tokens."
+      "Lidl OAuth configuration is not set."
     );
   }
 
@@ -356,7 +395,10 @@ export async function refreshTokens(existing?: TokensData): Promise<TokensData> 
 
     const resp = await authFetch(tokenUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
       body: form.toString(),
       signal: AbortSignal.timeout(8000),
     });
@@ -440,9 +482,21 @@ export async function getValidAccessToken(): Promise<string> {
   return accessToken;
 }
 
+export async function getOptionalAccessToken(): Promise<string | null> {
+  try {
+    return await getValidAccessToken();
+  } catch (err) {
+    if (err instanceof LidlAuthError && err.code === "UNAUTHENTICATED") {
+      return null;
+    }
+    throw err;
+  }
+}
+
 export async function getAuthStatus(): Promise<AuthSessionStatus> {
   const tokens = await loadTokens();
   const { token: refreshToken } = resolveRefreshToken(tokens);
+  const ctx = resolveCountry(getDefaultCountry());
   return {
     authenticated: Boolean(tokens?.access_token || refreshToken),
     hasAccessToken: Boolean(tokens?.access_token),
@@ -450,6 +504,8 @@ export async function getAuthStatus(): Promise<AuthSessionStatus> {
     savedAt: tokens?.saved_at,
     tokensFile: getTokensFilePath(),
     configured: isAuthConfigured() && isApiConfigured(),
+    defaultCountry: ctx.country,
+    defaultLanguage: ctx.language,
   };
 }
 
@@ -510,7 +566,7 @@ export async function loginWithBrowser(
 
     const page = context.pages()[0] || (await context.newPage());
 
-    console.log("\n🌐 Opening Lidl login in Chrome...");
+    console.log("\n🌐 Opening Lidl Accounts login in Chrome...");
     console.log("👉 Please sign in to your Lidl account in the browser window.");
     console.log("   (Your redirect callback will be captured automatically — no copy/paste needed!)\n");
 
@@ -526,11 +582,7 @@ export async function loginWithBrowser(
       };
 
       const handleUrl = (targetUrl: string) => {
-        if (
-          !resolved &&
-          AUTH_CONFIG.redirect_uri &&
-          targetUrl.startsWith(AUTH_CONFIG.redirect_uri)
-        ) {
+        if (!resolved && isAuthorizationRedirectUrl(targetUrl)) {
           resolved = true;
           console.log("⚡ Captured Lidl OAuth redirect callback automatically!");
           resolve({ redirectUrl: targetUrl, close: closeHandler });
@@ -578,16 +630,18 @@ function openInSystemBrowser(url: string) {
   }
 }
 
-export async function loginCli(opts: { manual?: boolean; save?: boolean } = {}): Promise<void> {
-  if (!isAuthConfigured()) {
-    console.error("❌ Lidl OAuth endpoints are not configured yet.");
-    console.error("   Populate AUTH_CONFIG in src/auth.ts (or set LIDL_AUTH_BASE, LIDL_CLIENT_ID, LIDL_REDIRECT_URI).");
-    process.exit(1);
-  }
-
+export async function loginCli(opts: {
+  manual?: boolean;
+  save?: boolean;
+  country?: string;
+} = {}): Promise<void> {
   const { codeVerifier, codeChallenge } = generatePkcePair();
   const state = crypto.randomBytes(16).toString("hex");
-  const authUrl = buildAuthorizeUrl({ codeChallenge, state });
+  const authUrl = buildAuthorizeUrl({
+    codeChallenge,
+    state,
+    country: opts.country,
+  });
 
   console.log("=".repeat(60));
   console.log("🔐 LIDL (LIDL PLUS) MCP LOGIN");
@@ -616,7 +670,9 @@ export async function loginCli(opts: { manual?: boolean; save?: boolean } = {}):
     console.log(`   ${authUrl}\n`);
     openInSystemBrowser(authUrl);
 
-    console.log(`2. After signing in, copy the redirect URL (${AUTH_CONFIG.redirect_uri}?code=...) or code parameter.\n`);
+    console.log(
+      `2. After signing in, copy the redirect URL (${AUTH_CONFIG.redirect_uri}&code=...) or the 'code' parameter.\n`
+    );
 
     const rl = readline.createInterface({
       input: process.stdin,

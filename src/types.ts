@@ -10,69 +10,87 @@ export interface TokensData {
 }
 
 export interface MemberProfile {
+  sub?: string;
   name?: string;
+  givenName?: string;
+  familyName?: string;
   email?: string;
+  emailVerified?: boolean;
+  phoneNumber?: string;
   loyaltyCardNumber?: string;
+  qrCode?: string;
   country?: string;
-  preferredStoreId?: string | number;
-  memberId?: string;
+  preferredStoreId?: string;
+  rawLoyalty?: any;
 }
 
 export interface LidlPrice {
   now: number;
   was?: number;
   currency?: string;
-  unitSizeDescription?: string;
+  discountLabel?: string;
+  disclaimers?: string[];
 }
 
-export interface LidlProduct {
-  id: string | number;
+export interface LidlOfferProduct {
+  id: string;
+  wawiId?: string;
+  articleNumber?: string;
   title: string;
+  subtitle?: string;
+  additionalInfo?: string;
   brand?: string;
-  summary?: string;
-  price: LidlPrice;
-  unitPriceDescription?: string;
-  onOffer?: boolean;
-  images?: Array<{ url: string; width?: number; height?: number }>;
-  category?: string;
-  url?: string;
+  description?: string;
+  price?: LidlPrice;
+  imageUrl?: string;
+  imageUrls?: string[];
+  badges?: Array<{ type?: string; title?: string }>;
+  isOnline?: boolean;
+  isStore?: boolean;
+  campaignId?: string;
+  campaignTitle?: string;
+}
+
+export interface LidlCampaign {
+  id: string;
+  title: string;
+  subtitle?: string;
+  kind?: string;
+  imageUrl?: string;
+  groupTitle?: string;
+}
+
+export interface LidlBrochure {
+  id: string;
+  title: string;
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  offerStartDate?: string;
+  offerEndDate?: string;
+  thumbnailUrl?: string;
+  viewUrl?: string;
+  downloadUrl?: string;
+  groupName?: string;
 }
 
 export interface LidlCoupon {
   id: string;
+  promotionId?: string;
   title: string;
-  description?: string;
-  discountText?: string;
-  status?: "available" | "activated" | "redeemed" | "expired" | string;
+  discountTitle?: string;
+  discountDescription?: string;
+  status?: string;
+  isActivated: boolean;
+  isSpecial?: boolean;
+  specialTag?: string;
+  channel?: string;
+  channels?: string[];
   startDate?: string;
   endDate?: string;
   imageUrl?: string;
-}
-
-export interface LidlOffer {
-  id: string;
-  title: string;
-  description?: string;
-  startDate?: string;
-  endDate?: string;
-  price?: LidlPrice;
-  products?: LidlProduct[];
-}
-
-export interface ShoppingListItem {
-  id?: string | number;
-  type: "FREE_TEXT" | "PRODUCT";
-  text?: string;
-  productId?: string | number;
-  product?: LidlProduct;
-  quantity?: number;
-  checked?: boolean;
-}
-
-export interface ShoppingList {
-  id?: string;
-  items: ShoppingListItem[];
-  totalItems: number;
+  section?: string;
+  stores?: string[];
 }
 
 export interface ReceiptLine {
@@ -81,6 +99,7 @@ export interface ReceiptLine {
   price: number;
   discount?: number;
   unitPrice?: number;
+  taxGroup?: string;
 }
 
 export interface Receipt {
@@ -88,22 +107,44 @@ export interface Receipt {
   date: string;
   total: number;
   totalDiscount?: number;
-  storeId?: string | number;
+  currency?: string;
+  storeId?: string;
   storeName?: string;
+  isFavorite?: boolean;
   lines?: ReceiptLine[];
+  raw?: any;
+}
+
+export interface StoreScheduleEntry {
+  from: string;
+  to: string;
+}
+
+export interface StoreSchedule {
+  isOpen?: boolean;
+  isTemporarilyClosed?: boolean;
+  isPermanentlyClosed?: boolean;
+  openingHours?: StoreScheduleEntry[];
+  willOpenAt?: { day?: number; hour?: string };
 }
 
 export interface StoreInfo {
-  id: string | number;
+  storeKey: string;
   name: string;
-  street?: string;
+  address?: string;
   postalCode?: string;
-  city?: string;
+  locality?: string;
+  state?: string;
+  province?: string;
   country?: string;
+  isLidlPlus?: boolean;
   latitude?: number;
   longitude?: number;
-  distanceKm?: number;
-  openingHours?: Array<{ day: string; open: string; close: string }>;
+  distanceMeters?: number;
+  zone?: string;
+  showOfferRegion?: string;
+  amenities?: string[];
+  schedule?: StoreSchedule;
 }
 
 export interface AuthSessionStatus {
@@ -113,4 +154,6 @@ export interface AuthSessionStatus {
   savedAt?: string;
   tokensFile: string;
   configured: boolean;
+  defaultCountry: string;
+  defaultLanguage: string;
 }

@@ -8,7 +8,11 @@ import * as dotenv from "dotenv";
 import { runCliCommand } from "./cli.js";
 import { LidlClient } from "./client.js";
 import { registerAccountTools } from "./tools/account.js";
+import { registerCouponTools } from "./tools/coupons.js";
 import { toolError } from "./tools/helpers.js";
+import { registerOfferTools } from "./tools/offers.js";
+import { registerReceiptTools } from "./tools/receipts.js";
+import { registerStoreTools } from "./tools/stores.js";
 
 // Load local .env if present
 dotenv.config();
@@ -38,6 +42,10 @@ export function createServer(customClient?: LidlClient): McpServer {
   });
 
   registerAccountTools(server, c);
+  registerStoreTools(server, c);
+  registerOfferTools(server, c);
+  registerCouponTools(server, c);
+  registerReceiptTools(server, c);
 
   return server;
 }

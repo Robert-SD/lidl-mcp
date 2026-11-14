@@ -1,3 +1,12 @@
+import { z } from "zod";
+
+export const countryField = z
+  .string()
+  .min(2)
+  .max(5)
+  .optional()
+  .describe("2-letter Lidl country code (e.g. 'nl' or 'de'). Defaults to LIDL_COUNTRY ('nl').");
+
 export function toolError(error: any) {
   return {
     content: [{ type: "text" as const, text: `Error: ${error.message}` }],

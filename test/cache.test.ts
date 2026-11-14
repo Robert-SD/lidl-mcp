@@ -7,7 +7,7 @@ import {
   resetSharedCache,
   stableStringify,
 } from "../src/cache.js";
-import { cacheKeyFor, cachePolicyFor } from "../src/cache-policy.js";
+import { CACHE_TTL, cacheKeyFor, cachePolicyFor } from "../src/cache-policy.js";
 
 test("stableStringify sorts keys deterministically", () => {
   assert.strictEqual(
@@ -22,14 +22,14 @@ test("TtlCache respects TTL, LRU eviction, invalidate, and wrap coalescing", asy
 
   cache.set("k1", "v1", 500);
   cache.set("k2", "v2", 500);
-  assert.strictEqual(cache.get("k1"), "v1"); // refresh k1 recency
-  cache.set("k3", "v3", 500); // evicts k2
+  assert.strictEqual(cache.get("k1"), "v1");
+  cache.set("k3", "v3", 500);
 
   assert.strictEqual(cache.get("k2"), undefined);
   assert.strictEqual(cache.get("k1"), "v1");
   assert.strictEqual(cache.get("k3"), "v3");
 
-  now = 2000; // expire all
+  now = 2000;
   assert.strictEqual(cache.get("k1"), undefined);
 
   let loaderCalls = 0;
@@ -51,30 +51,46 @@ test("TtlCache respects TTL, LRU eviction, invalidate, and wrap coalescing", asy
   assert.strictEqual(cache.stats().evictions, 1);
 });
 
-test("cacheKeyFor produces distinct keys per scope and normalized query params", () => {
-  const k1 = cacheKeyFor(
-    "https://api.example",
-    "/v1/items",
-    { method: "GET", query: { b: "2", a: "1", empty: "" } },
-    "scope-a"
+test("cacheKeyFor isolates countries, languages, and scopes", () => {
+  const nlKey = cacheKeyFor(
+    "https://coupons.lidlplus.com",
+    "/app/api/v4/promotionslist/anonymous",
+    { host: "coupons", country: "nl", language: "nl", method: "GET" },
+    "anonymous"
   );
-  const k2 = cacheKeyFor(
-    "https://api.example",
-    "/v1/items",
-    { method: "GET", query: { a: "1", b: "2" } },
-    "scope-a"
-  );
-  const k3 = cacheKeyFor(
-    "https://api.example",
-    "/v1/items",
-    { method: "GET", query: { a: "1", b: "2" } },
-    "scope-b"
+  const deKey = cacheKeyFor(
+    "https://coupons.lidlplus.com",
+    "/app/api/v4/promotionslist/anonymous",
+    { host: "coupons", country: "de", language: "de", method: "GET" },
+    "anonymous"
   );
 
-  assert.strictEqual(k1, k2);
-  assert.notStrictEqual(k1, k3);
-  assert.strictEqual(cachePolicyFor("/v1/items", { method: "GET" }), null);
+  assert.notStrictEqual(nlKey, deKey);
   assert.ok(cacheKey("GET /x", [1]).startsWith("GET /x "));
+});
+
+test("cachePolicyFor caches reference/leaflet/receipt-detail endpoints and keeps live endpoints uncached", () => {
+  assert.strictEqual(
+    cachePolicyFor("/api/v4/nl", { host: "stores", method: "GET" })?.ttl,
+    CACHE_TTL.catalog
+  );
+  assert.strictEqual(
+    cachePolicyFor("/api/v2/de/Brochures", { host: "brochures", method: "GET" })?.ttl,
+    CACHE_TTL.offers
+  );
+  assert.strictEqual(
+    cachePolicyFor("/api/v3/nl/tickets/abc-123", { host: "tickets", method: "GET" })?.ttl,
+    CACHE_TTL.receiptDetail
+  );
+  // Ticket list & authenticated coupon list must stay live
+  assert.strictEqual(
+    cachePolicyFor("/api/v3/nl/tickets", { host: "tickets", method: "GET" }),
+    null
+  );
+  assert.strictEqual(
+    cachePolicyFor("/app/api/v4/promotionslist", { host: "coupons", method: "GET" }),
+    null
+  );
 });
 
 test("getSharedCache & resetSharedCache honor LIDL_MCP_CACHE", () => {

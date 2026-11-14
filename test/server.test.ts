@@ -5,43 +5,98 @@ import { LidlClient } from "../src/client.js";
 import { TtlCache } from "../src/cache.js";
 import { MemoryTokenStore, setTokenStore } from "../src/token-store.js";
 
-test("createServer: registers foundation tools", () => {
+const EXPECTED_TOOLS = [
+  "lidl_login",
+  "lidl_get_profile",
+  "lidl_get_loyalty_summary",
+  "lidl_cache_stats",
+  "lidl_search_stores",
+  "lidl_get_store_details",
+  "lidl_get_favorite_store",
+  "lidl_set_favorite_store",
+  "lidl_get_brochures",
+  "lidl_get_campaign_groups",
+  "lidl_get_campaign_offers",
+  "lidl_search_offers",
+  "lidl_get_leaflet_product",
+  "lidl_get_shop_product",
+  "lidl_get_coupons",
+  "lidl_get_coupon_details",
+  "lidl_activate_coupon",
+  "lidl_deactivate_coupon",
+  "lidl_get_coupon_plus",
+  "lidl_list_receipts",
+  "lidl_get_receipt_details",
+  "lidl_get_receipt_summary",
+  "lidl_set_receipt_favorite",
+];
+
+test("createServer: registers all 23 Lidl tools", () => {
   const server = createServer();
   const registered = Object.keys((server as any)._registeredTools);
 
-  assert.deepStrictEqual(registered.sort(), ["lidl_cache_stats", "lidl_login"]);
+  assert.strictEqual(registered.length, EXPECTED_TOOLS.length);
+  for (const tool of EXPECTED_TOOLS) {
+    assert.ok(registered.includes(tool), `Expected tool ${tool} to be registered`);
+  }
 });
 
-test("createServer: foundation tools have readOnlyHint true", () => {
+test("createServer: write tools have readOnlyHint false, destructiveHint false", () => {
   const server = createServer();
-  for (const name of ["lidl_login", "lidl_cache_stats"]) {
+  const writeTools = [
+    "lidl_set_favorite_store",
+    "lidl_activate_coupon",
+    "lidl_deactivate_coupon",
+    "lidl_set_receipt_favorite",
+  ];
+  for (const name of writeTools) {
     const tool = (server as any)._registeredTools[name];
     assert.ok(tool, `${name} should be registered`);
-    assert.deepStrictEqual(tool.annotations, { readOnlyHint: true });
+    assert.deepStrictEqual(tool.annotations, {
+      readOnlyHint: false,
+      destructiveHint: false,
+    });
+  }
+});
+
+test("createServer: read tools have readOnlyHint true", () => {
+  const server = createServer();
+  const writeSet = new Set([
+    "lidl_set_favorite_store",
+    "lidl_activate_coupon",
+    "lidl_deactivate_coupon",
+    "lidl_set_receipt_favorite",
+  ]);
+  for (const name of EXPECTED_TOOLS) {
+    if (writeSet.has(name)) continue;
+    const tool = (server as any)._registeredTools[name];
+    assert.deepStrictEqual(
+      tool.annotations,
+      { readOnlyHint: true },
+      `${name} should have readOnlyHint: true`
+    );
   }
 });
 
 test("lidl_login & lidl_cache_stats handlers return expected JSON", async () => {
-  setTokenStore(new MemoryTokenStore({ access_token: "tok-123", refresh_token: "ref-456" }));
+  setTokenStore(new MemoryTokenStore(null));
   try {
     const cache = new TtlCache({ maxEntries: 42 });
-    const client = new LidlClient("https://example.invalid", cache);
+    const client = new LidlClient({}, cache);
     const server = createServer(client);
 
     const loginTool = (server as any)._registeredTools["lidl_login"];
     const loginResp = await loginTool.handler({});
     const loginPayload = JSON.parse(loginResp.content[0].text);
-    assert.strictEqual(loginPayload.status, "authenticated");
-    assert.strictEqual(loginPayload.authenticated, true);
-    assert.strictEqual(loginPayload.hasAccessToken, true);
-    assert.strictEqual(loginPayload.hasRefreshToken, true);
+    assert.strictEqual(loginPayload.status, "unauthenticated");
+    assert.strictEqual(loginPayload.authenticated, false);
+    assert.strictEqual(loginPayload.configured, true);
 
     const statsTool = (server as any)._registeredTools["lidl_cache_stats"];
     const statsResp = await statsTool.handler({});
     const statsPayload = JSON.parse(statsResp.content[0].text);
     assert.strictEqual(statsPayload.enabled, true);
     assert.strictEqual(statsPayload.maxEntries, 42);
-    assert.strictEqual(statsPayload.entries, 0);
   } finally {
     setTokenStore(null);
   }
