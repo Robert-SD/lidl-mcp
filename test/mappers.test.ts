@@ -60,6 +60,7 @@ test("mapOfferProduct maps mainPrice and campaign metadata", () => {
         symbol: "€",
         discount: "XXL",
       },
+      badges: [{ type: "AvailableInStore", title: null }],
       isStore: true,
     },
     { id: "10008785", title: "Aanbiedingen" }
@@ -68,6 +69,7 @@ test("mapOfferProduct maps mainPrice and campaign metadata", () => {
   assert.strictEqual(product.price?.was, 2.49);
   assert.strictEqual(product.price?.discountLabel, "XXL");
   assert.strictEqual(product.campaignTitle, "Aanbiedingen");
+  assert.deepStrictEqual(product.badges, [{ type: "AvailableInStore" }]);
 });
 
 test("mapCoupon, mapCampaign, mapBrochure, and mapReceipt normalize fields", () => {

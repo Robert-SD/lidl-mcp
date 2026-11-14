@@ -30,12 +30,13 @@ function extractBodyMessage(rawBody: string): string | undefined {
   if (!trimmed) return undefined;
   try {
     const parsed = JSON.parse(trimmed);
+    const first = Array.isArray(parsed) ? parsed[0] : parsed;
     const candidate =
-      parsed?.detail ||
-      parsed?.title ||
-      parsed?.message ||
-      parsed?.error_description ||
-      parsed?.error;
+      first?.detail ||
+      first?.title ||
+      first?.message ||
+      first?.error_description ||
+      first?.error;
     if (typeof candidate === "string" && candidate.trim()) {
       return candidate.trim();
     }

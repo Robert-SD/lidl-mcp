@@ -79,14 +79,23 @@ export function mapOfferProduct(
             was: typeof mp?.oldPrice === "number" ? mp.oldPrice : undefined,
             currency: mp?.symbol || "€",
             discountLabel: mp?.discount || undefined,
-            disclaimers: Array.isArray(mp?.disclaimers) ? mp.disclaimers : undefined,
+            disclaimers: Array.isArray(mp?.disclaimers)
+              ? mp.disclaimers.filter((d: unknown): d is string => typeof d === "string" && d.length > 0)
+              : undefined,
           }
         : undefined,
     imageUrl:
       raw?.imageUrl ||
-      (Array.isArray(raw?.imageUrls) ? raw.imageUrls[0] : undefined),
-    imageUrls: Array.isArray(raw?.imageUrls) ? raw.imageUrls : undefined,
-    badges: Array.isArray(raw?.badges) ? raw.badges : undefined,
+      (Array.isArray(raw?.imageUrls) ? raw.imageUrls.find((u: unknown) => typeof u === "string") : undefined),
+    imageUrls: Array.isArray(raw?.imageUrls)
+      ? raw.imageUrls.filter((u: unknown): u is string => typeof u === "string" && u.length > 0)
+      : undefined,
+    badges: Array.isArray(raw?.badges)
+      ? raw.badges.map((b: any) => ({
+          ...(typeof b?.type === "string" && b.type ? { type: b.type } : {}),
+          ...(typeof b?.title === "string" && b.title ? { title: b.title } : {}),
+        }))
+      : undefined,
     isOnline:
       typeof raw?.isOnline === "boolean"
         ? raw.isOnline

@@ -143,8 +143,36 @@ test("lidl_login, lidl_cache_stats, structuredContent, and structured error taxo
 
     assert.strictEqual(normalizeToolError(new LidlApiError(401, "Unauthorized")).code, "auth_expired");
     assert.strictEqual(normalizeToolError(new LidlApiError(429, "Slow down")).code, "rate_limited");
+    assert.deepStrictEqual(
+      normalizeToolError(new LidlApiError(400, JSON.stringify([{ title: "Validation", detail: "Invalid Store Id" }]))),
+      { code: "bad_request", status: 400, message: "Invalid Store Id" }
+    );
     assert.strictEqual(normalizeToolError(new LidlAuthError("not_logged_in", "Login required")).code, "unauthenticated");
     assert.strictEqual(normalizeToolError(new TypeError("fetch failed")).code, "network_error");
+
+    const summaryTool = (server as any)._registeredTools["lidl_get_receipt_summary"];
+    const summaryParse = summaryTool.outputSchema.safeParse({
+      ticketId: "t1",
+      date: "2026-04-10T21:14:49+02:00",
+      localDate: "2026-04-10",
+      purchaseAmountWithoutCurrency: "12,50",
+      purchaseSavingsWithoutCurrency: "1,25",
+      purchaseAmount: 12.5,
+      purchaseSavings: 1.25,
+      vendor: null,
+      isHtml: true,
+      hasHtmlDocument: true,
+    });
+    assert.strictEqual(summaryParse.success, true);
+
+    const campOffersTool = (server as any)._registeredTools["lidl_get_campaign_offers"];
+    const campParse = campOffersTool.outputSchema.safeParse({
+      id: "100",
+      title: "Weekactie",
+      subtitle: null,
+      products: [{ id: "100_1", title: "Appels", badges: [{ type: "AvailableInStore", title: null }] }],
+    });
+    assert.strictEqual(campParse.success, true);
   } finally {
     setTokenStore(null);
   }

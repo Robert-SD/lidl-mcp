@@ -29,23 +29,23 @@ export const priceSchema = looseObject({
 
 export const offerProductSchema = looseObject({
   id: z.string(),
-  wawiId: z.string().optional(),
-  articleNumber: z.string().optional(),
+  wawiId: z.string().nullish(),
+  articleNumber: z.string().nullish(),
   title: z.string(),
-  subtitle: z.string().optional(),
-  additionalInfo: z.string().optional(),
-  brand: z.string().optional(),
-  description: z.string().optional(),
-  price: priceSchema.optional(),
-  imageUrl: z.string().optional(),
-  imageUrls: z.array(z.string()).optional(),
+  subtitle: z.string().nullish(),
+  additionalInfo: z.string().nullish(),
+  brand: z.string().nullish(),
+  description: z.string().nullish(),
+  price: priceSchema.nullish(),
+  imageUrl: z.string().nullish(),
+  imageUrls: z.array(z.string()).nullish(),
   badges: z
-    .array(looseObject({ type: z.string().optional(), title: z.string().optional() }))
-    .optional(),
-  isOnline: z.boolean().optional(),
-  isStore: z.boolean().optional(),
-  campaignId: z.string().optional(),
-  campaignTitle: z.string().optional(),
+    .array(looseObject({ type: z.string().nullish(), title: z.string().nullish() }))
+    .nullish(),
+  isOnline: z.boolean().nullish(),
+  isStore: z.boolean().nullish(),
+  campaignId: z.string().nullish(),
+  campaignTitle: z.string().nullish(),
 });
 
 export const campaignSchema = looseObject({
@@ -263,7 +263,7 @@ export const campaignGroupsOutputSchema = looseObject({
 export const campaignOffersOutputSchema = looseObject({
   id: z.string(),
   title: z.string(),
-  subtitle: z.string().optional(),
+  subtitle: z.string().nullish(),
   products: z.array(offerProductSchema),
 });
 
@@ -276,8 +276,10 @@ export const searchOffersOutputSchema = looseObject({
 });
 
 export const shopProductOutputSchema = looseObject({
-  productErp: z.string().optional(),
-  title: z.string().optional(),
+  productErp: z.string().nullish(),
+  erpNumber: z.string().nullish(),
+  productId: z.union([z.number(), z.string()]).nullish(),
+  title: z.string().nullish(),
 });
 
 export const couponsOutputSchema = looseObject({
@@ -287,13 +289,13 @@ export const couponsOutputSchema = looseObject({
 });
 
 export const couponDetailsOutputSchema = looseObject({
-  id: z.string().optional(),
-  promotionId: z.string().optional(),
-  title: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  startLocalDate: z.string().optional(),
-  endLocalDate: z.string().optional(),
+  id: z.string().nullish(),
+  promotionId: z.string().nullish(),
+  title: z.string().nullish(),
+  startDate: z.string().nullish(),
+  endDate: z.string().nullish(),
+  startLocalDate: z.string().nullish(),
+  endLocalDate: z.string().nullish(),
 });
 
 export const couponActivationOutputSchema = looseObject({
@@ -305,9 +307,9 @@ export const couponActivationOutputSchema = looseObject({
 });
 
 export const couponPlusOutputSchema = looseObject({
-  active: z.boolean().optional(),
-  country: z.string().optional(),
-  message: z.string().optional(),
+  active: z.boolean().nullish(),
+  country: z.string().nullish(),
+  message: z.string().nullish(),
 });
 
 export const listReceiptsOutputSchema = looseObject({
@@ -316,18 +318,18 @@ export const listReceiptsOutputSchema = looseObject({
 });
 
 export const receiptSummaryOutputSchema = looseObject({
-  ticketId: z.string().optional(),
-  origin: z.string().optional(),
-  date: z.string().optional(),
-  localDate: z.string().optional(),
-  purchaseAmountWithoutCurrency: z.number().optional(),
-  purchaseSavingsWithoutCurrency: z.number().optional(),
+  ticketId: z.string().nullish(),
+  origin: z.string().nullish(),
+  date: z.string().nullish(),
+  localDate: z.string().nullish(),
+  purchaseAmountWithoutCurrency: z.union([z.number(), z.string()]).nullish(),
+  purchaseSavingsWithoutCurrency: z.union([z.number(), z.string()]).nullish(),
   purchaseAmount: z.unknown().optional(),
   purchaseSavings: z.unknown().optional(),
-  isDeletedTicket: z.boolean().optional(),
-  vendor: z.string().optional(),
-  isHtml: z.boolean().optional(),
-  hasHtmlDocument: z.boolean().optional(),
+  isDeletedTicket: z.boolean().nullish(),
+  vendor: z.string().nullish(),
+  isHtml: z.boolean().nullish(),
+  hasHtmlDocument: z.boolean().nullish(),
 });
 
 export const setReceiptFavoriteOutputSchema = looseObject({
