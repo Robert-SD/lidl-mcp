@@ -24,7 +24,7 @@ export async function getBrochures(
   for (const group of Array.isArray(raw) ? raw : []) {
     const groupName = group?.name || undefined;
     for (const flyer of Array.isArray(group?.flyers) ? group.flyers : []) {
-      brochures.push(mapBrochure(flyer, groupName));
+      brochures.push(mapBrochure(flyer, groupName, ctx.country));
     }
   }
   return brochures;

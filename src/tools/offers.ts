@@ -2,6 +2,14 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { LidlClient } from "../client.js";
 import { countryField, withJsonTool } from "./helpers.js";
+import {
+  brochuresOutputSchema,
+  campaignGroupsOutputSchema,
+  campaignOffersOutputSchema,
+  offerProductSchema,
+  searchOffersOutputSchema,
+  shopProductOutputSchema,
+} from "./schemas.js";
 
 export function registerOfferTools(server: McpServer, c: LidlClient): void {
   server.registerTool(
@@ -15,8 +23,12 @@ export function registerOfferTools(server: McpServer, c: LidlClient): void {
         country: countryField,
         storeId: z.string().optional().describe("Optional store key (e.g. 'NL0135')."),
       }),
+      outputSchema: brochuresOutputSchema,
     },
-    withJsonTool((args) => c.getBrochures(args))
+    withJsonTool(async (args) => {
+      const brochures = await c.getBrochures(args);
+      return { count: brochures.length, brochures };
+    })
   );
 
   server.registerTool(
@@ -33,8 +45,12 @@ export function registerOfferTools(server: McpServer, c: LidlClient): void {
           .optional()
           .describe("Optional store key (e.g. 'NL0135' or 'DE0347') for local pricing/assortment."),
       }),
+      outputSchema: campaignGroupsOutputSchema,
     },
-    withJsonTool((args) => c.getCampaignGroups(args))
+    withJsonTool(async (args) => {
+      const groups = await c.getCampaignGroups(args);
+      return { count: groups.length, groups };
+    })
   );
 
   server.registerTool(
@@ -52,6 +68,7 @@ export function registerOfferTools(server: McpServer, c: LidlClient): void {
         country: countryField,
         storeId: z.string().optional().describe("Optional store key (e.g. 'NL0135')."),
       }),
+      outputSchema: campaignOffersOutputSchema,
     },
     withJsonTool((args) => c.getCampaignOffers(args))
   );
@@ -78,6 +95,7 @@ export function registerOfferTools(server: McpServer, c: LidlClient): void {
           .optional()
           .describe("Maximum number of offers to return (default 30, max 200)."),
       }),
+      outputSchema: searchOffersOutputSchema,
     },
     withJsonTool((args) => c.searchOffers(args))
   );
@@ -97,6 +115,7 @@ export function registerOfferTools(server: McpServer, c: LidlClient): void {
         country: countryField,
         storeId: z.string().optional().describe("Optional store key (e.g. 'NL0135')."),
       }),
+      outputSchema: offerProductSchema,
     },
     withJsonTool((args) => c.getLeafletProduct(args))
   );
@@ -115,6 +134,7 @@ export function registerOfferTools(server: McpServer, c: LidlClient): void {
           .describe("Lidl ERP product number (e.g. '100356883')."),
         country: countryField,
       }),
+      outputSchema: shopProductOutputSchema,
     },
     withJsonTool((args) => c.getShopProduct(args))
   );

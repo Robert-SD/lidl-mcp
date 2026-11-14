@@ -14,8 +14,8 @@ export const CACHE_TTL = {
   productDetail: 24 * 60 * 60 * 1000,
   /** Stores & schedules (excluding live user favorites): near-static reference data. */
   catalog: 24 * 60 * 60 * 1000,
-  /** Anonymous promotions, brochures, leaflets. */
-  offers: 30 * 60 * 1000,
+  /** Anonymous & digital leaflet promotions, brochures, coupon details. */
+  offers: 60 * 60 * 1000,
   /** Closed receipt details & summaries are immutable. */
   receiptDetail: 30 * 24 * 60 * 60 * 1000,
 } as const;
@@ -105,6 +105,42 @@ const REST_GET_CACHE_POLICIES: Array<{
     host: "coupons",
     pattern: /^\/app\/api\/v4\/promotionslist\/anonymous$/i,
     rule: { ttl: CACHE_TTL.offers, shouldCache: (p) => Array.isArray(p?.sections) },
+  },
+  {
+    host: "coupons",
+    pattern: /^\/app\/api\/v4\/promotionsdetails\/[^/]+$/i,
+    rule: { ttl: CACHE_TTL.offers, shouldCache: (p) => Boolean(p && typeof p === "object") },
+  },
+  // Account & loyalty overview endpoints (short TTL)
+  {
+    host: "accounts",
+    pattern: /^\/connect\/userinfo$/i,
+    rule: { ttl: CACHE_TTL.liveList, shouldCache: (p) => Boolean(p && typeof p === "object") },
+  },
+  {
+    host: "profile",
+    pattern: /^\/api\/v1\/[a-z]{2}\/loyalty$/i,
+    rule: { ttl: CACHE_TTL.productDetail, shouldCache: (p) => p !== null && p !== undefined },
+  },
+  {
+    host: "loyaltytab",
+    pattern: /^\/api\/v2\/[a-z]{2}\/summary$/i,
+    rule: { ttl: CACHE_TTL.liveList, shouldCache: (p) => Boolean(p && typeof p === "object") },
+  },
+  {
+    host: "stampcard",
+    pattern: /^\/api\/v3\/[a-z]{2}\/user\/promotions$/i,
+    rule: { ttl: CACHE_TTL.liveList, shouldCache: (p) => Boolean(p && typeof p === "object") },
+  },
+  {
+    host: "deposits",
+    pattern: /^\/api\/v1\/[a-z]{2}\/deposits$/i,
+    rule: { ttl: CACHE_TTL.liveList, shouldCache: (p) => Boolean(p && typeof p === "object") },
+  },
+  {
+    host: "couponplus",
+    pattern: /^\/api\/v4\/[a-z]{2}\/user\/promotions$/i,
+    rule: { ttl: CACHE_TTL.liveList, shouldCache: (p) => Boolean(p && typeof p === "object") },
   },
   // Shop product detail
   {

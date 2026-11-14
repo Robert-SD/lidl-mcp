@@ -2,6 +2,12 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { LidlClient } from "../client.js";
 import { countryField, withJsonTool } from "./helpers.js";
+import {
+  couponActivationOutputSchema,
+  couponDetailsOutputSchema,
+  couponPlusOutputSchema,
+  couponsOutputSchema,
+} from "./schemas.js";
 
 export function registerCouponTools(server: McpServer, c: LidlClient): void {
   server.registerTool(
@@ -16,6 +22,7 @@ export function registerCouponTools(server: McpServer, c: LidlClient): void {
         storeId: z.string().optional().describe("Optional store key (e.g. 'NL0135')."),
         zone: z.string().optional().describe("Optional offer zone (e.g. 'NL1')."),
       }),
+      outputSchema: couponsOutputSchema,
     },
     withJsonTool((args) => c.getCoupons(args))
   );
@@ -31,6 +38,7 @@ export function registerCouponTools(server: McpServer, c: LidlClient): void {
         promotionId: z.string().min(1).describe("Promotion UUID (promotionId)."),
         country: countryField,
       }),
+      outputSchema: couponDetailsOutputSchema,
     },
     withJsonTool((args) => c.getCouponDetails(args))
   );
@@ -41,7 +49,11 @@ export function registerCouponTools(server: McpServer, c: LidlClient): void {
       title: "Activate a Lidl Plus Coupon",
       description:
         "Activate a Lidl Plus coupon for the selected country ('nl' or 'de') so it applies at checkout.",
-      annotations: { readOnlyHint: false, destructiveHint: false },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
       inputSchema: z.object({
         promotionId: z
           .string()
@@ -53,6 +65,7 @@ export function registerCouponTools(server: McpServer, c: LidlClient): void {
           .optional()
           .describe("Optional Action-Location header (defaults to 'CouponList')."),
       }),
+      outputSchema: couponActivationOutputSchema,
     },
     withJsonTool((args) => c.activateCoupon(args))
   );
@@ -63,7 +76,11 @@ export function registerCouponTools(server: McpServer, c: LidlClient): void {
       title: "Deactivate a Lidl Plus Coupon",
       description:
         "Deactivate a previously activated Lidl Plus coupon for the selected country ('nl' or 'de').",
-      annotations: { readOnlyHint: false, destructiveHint: false },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
       inputSchema: z.object({
         promotionId: z
           .string()
@@ -75,6 +92,7 @@ export function registerCouponTools(server: McpServer, c: LidlClient): void {
           .optional()
           .describe("Optional Action-Location header (defaults to 'CouponList')."),
       }),
+      outputSchema: couponActivationOutputSchema,
     },
     withJsonTool((args) => c.deactivateCoupon(args))
   );
@@ -89,6 +107,7 @@ export function registerCouponTools(server: McpServer, c: LidlClient): void {
       inputSchema: z.object({
         country: countryField,
       }),
+      outputSchema: couponPlusOutputSchema,
     },
     withJsonTool(({ country }) => c.getCouponPlus(country))
   );

@@ -66,6 +66,8 @@ export interface LidlBrochure {
   name?: string;
   startDate?: string;
   endDate?: string;
+  startLocalDate?: string;
+  endLocalDate?: string;
   offerStartDate?: string;
   offerEndDate?: string;
   thumbnailUrl?: string;
@@ -88,6 +90,8 @@ export interface LidlCoupon {
   channels?: string[];
   startDate?: string;
   endDate?: string;
+  startLocalDate?: string;
+  endLocalDate?: string;
   imageUrl?: string;
   section?: string;
   stores?: string[];
@@ -105,6 +109,7 @@ export interface ReceiptLine {
 export interface Receipt {
   id: string;
   date: string;
+  localDate?: string;
   total: number;
   totalDiscount?: number;
   currency?: string;
@@ -168,6 +173,7 @@ export interface RegularProductSummary {
   lastUnitPrice: number;
   averageLinePrice: number;
   lastPurchasedDate: string;
+  lastPurchasedLocalDate?: string;
   daysSinceLastPurchase: number;
   averageCadenceDays?: number;
   dueForRestock: boolean;
@@ -209,6 +215,8 @@ export interface MatchedCouponSummary {
   isActivated: boolean;
   startDate?: string;
   endDate?: string;
+  startLocalDate?: string;
+  endLocalDate?: string;
   matchScore: number;
 }
 
@@ -239,6 +247,7 @@ export interface GroceryTripPlan {
     title: string;
     discountTitle?: string;
     endDate?: string;
+    endLocalDate?: string;
     matchedItems: string[];
   }>;
   note?: string;

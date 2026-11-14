@@ -10,6 +10,7 @@ import {
 import { CacheStats, TtlCache, cacheKey, getSharedCache } from "./cache.js";
 import { CACHE_TTL, cacheKeyFor, cachePolicyFor } from "./cache-policy.js";
 import { resolveCountry } from "./countries.js";
+import { LidlApiError, normalizeToolError, type LidlErrorCode } from "./errors.js";
 import { HostKey, LidlTransport, RequestOptions } from "./services/transport.js";
 import * as coupons from "./services/coupons.js";
 import * as loyalty from "./services/loyalty.js";
@@ -30,7 +31,25 @@ import {
   StoreInfo,
 } from "./types.js";
 
-export { CACHE_TTL };
+export { CACHE_TTL, LidlApiError, normalizeToolError };
+export type { LidlErrorCode };
+
+function extractJwtSubject(jwt: string | undefined): string | undefined {
+  if (!jwt) return undefined;
+  const parts = jwt.split(".");
+  if (parts.length < 2) return undefined;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf8")
+    );
+    if (typeof payload?.sub === "string" && payload.sub) {
+      return payload.sub;
+    }
+  } catch {
+    // Opaque or malformed token
+  }
+  return undefined;
+}
 
 export class LidlClient {
   private readonly cache: TtlCache;
@@ -78,7 +97,11 @@ export class LidlClient {
   private async authScope(authMode: RequestOptions["authMode"]): Promise<string> {
     if (authMode === "none") return "anonymous";
     const tokens = await loadTokens();
-    const principal = tokens?.refresh_token || tokens?.access_token;
+    const principal =
+      extractJwtSubject(tokens?.id_token) ||
+      extractJwtSubject(tokens?.access_token) ||
+      tokens?.refresh_token ||
+      tokens?.access_token;
     const scope = principal
       ? cacheKey("auth", [principal]).split(" ").pop()!
       : "anonymous";
@@ -225,11 +248,7 @@ export class LidlClient {
 
     if (!resp.ok) {
       const errText = await resp.text();
-      const err = new Error(
-        `Lidl API error (${resp.status}) at ${urlStr}: ${errText}`
-      );
-      (err as any).status = resp.status;
-      throw err;
+      throw new LidlApiError(resp.status, errText);
     }
 
     const text = await resp.text();
@@ -241,8 +260,12 @@ export class LidlClient {
   getProfile = (country?: string): Promise<MemberProfile> =>
     loyalty.getProfile(this.transport, country);
 
+  getLoyaltyProgram = (country?: string, storeId?: string) =>
+    loyalty.getLoyaltyProgram(this.transport, { country, storeId });
+
+  /** @deprecated Use `getLoyaltyProgram` instead. */
   getLoyaltySummary = (country?: string, storeId?: string) =>
-    loyalty.getLoyaltySummary(this.transport, { country, storeId });
+    loyalty.getLoyaltyProgram(this.transport, { country, storeId });
 
   // 2. Stores
   searchStores = (options?: {
@@ -262,8 +285,8 @@ export class LidlClient {
   getFavoriteStore = (country?: string): Promise<any> =>
     stores.getFavoriteStore(this.transport, country);
 
-  setFavoriteStore = (storeKey: string, country?: string): Promise<any> =>
-    stores.setFavoriteStore(this.transport, storeKey, country);
+  setFavoriteStore = (storeId: string, country?: string): Promise<any> =>
+    stores.setFavoriteStore(this.transport, storeId, country);
 
   // 3. Offers, Leaflets, Brochures & Shop Products
   getBrochures = (options?: {

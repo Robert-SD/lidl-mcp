@@ -1,3 +1,5 @@
+import { resolveCountry } from "./countries.js";
+import { normalizeTimestamp } from "./dates.js";
 import {
   LidlBrochure,
   LidlCampaign,
@@ -97,15 +99,26 @@ export function mapOfferProduct(
   };
 }
 
-export function mapBrochure(raw: any, groupName?: string): LidlBrochure {
+export function mapBrochure(
+  raw: any,
+  groupName?: string,
+  country?: string
+): LidlBrochure {
+  const { zoneId } = resolveCountry(country);
+  const startNorm = normalizeTimestamp(raw?.startDate, zoneId, { naiveAs: "local" });
+  const endNorm = normalizeTimestamp(raw?.endDate, zoneId, { naiveAs: "local" });
+  const offerStartNorm = normalizeTimestamp(raw?.offerStartDate, zoneId, { naiveAs: "local" });
+  const offerEndNorm = normalizeTimestamp(raw?.offerEndDate, zoneId, { naiveAs: "local" });
   return {
     id: String(raw?.id || ""),
     title: String(raw?.title || ""),
     name: raw?.name || undefined,
-    startDate: raw?.startDate || undefined,
-    endDate: raw?.endDate || undefined,
-    offerStartDate: raw?.offerStartDate || undefined,
-    offerEndDate: raw?.offerEndDate || undefined,
+    startDate: startNorm?.iso ?? (raw?.startDate || undefined),
+    endDate: endNorm?.iso ?? (raw?.endDate || undefined),
+    startLocalDate: startNorm?.localDate,
+    endLocalDate: endNorm?.localDate,
+    offerStartDate: offerStartNorm?.iso ?? (raw?.offerStartDate || undefined),
+    offerEndDate: offerEndNorm?.iso ?? (raw?.offerEndDate || undefined),
     thumbnailUrl: raw?.thumbnailUrl || undefined,
     viewUrl: raw?.viewUrl || undefined,
     downloadUrl: raw?.downloadUrl || undefined,
@@ -113,7 +126,14 @@ export function mapBrochure(raw: any, groupName?: string): LidlBrochure {
   };
 }
 
-export function mapCoupon(raw: any, section?: string): LidlCoupon {
+export function mapCoupon(
+  raw: any,
+  section?: string,
+  country?: string
+): LidlCoupon {
+  const { zoneId } = resolveCountry(country);
+  const startNorm = normalizeTimestamp(raw?.validity?.start, zoneId, { naiveAs: "utc" });
+  const endNorm = normalizeTimestamp(raw?.validity?.end, zoneId, { naiveAs: "utc" });
   return {
     id: String(raw?.id || ""),
     promotionId: raw?.promotionId ? String(raw.promotionId) : undefined,
@@ -126,8 +146,10 @@ export function mapCoupon(raw: any, section?: string): LidlCoupon {
     specialTag: raw?.specialPromotion?.tag || undefined,
     channel: raw?.channel || undefined,
     channels: Array.isArray(raw?.channels) ? raw.channels : undefined,
-    startDate: raw?.validity?.start || undefined,
-    endDate: raw?.validity?.end || undefined,
+    startDate: startNorm?.iso ?? (raw?.validity?.start || undefined),
+    endDate: endNorm?.iso ?? (raw?.validity?.end || undefined),
+    startLocalDate: startNorm?.localDate,
+    endLocalDate: endNorm?.localDate,
     imageUrl: raw?.image?.url || undefined,
     section,
     stores: Array.isArray(raw?.stores) && raw.stores.length > 0 ? raw.stores : undefined,
@@ -256,7 +278,8 @@ export function parseHtmlReceiptLines(html: string): {
   };
 }
 
-export function mapReceipt(raw: any): Receipt {
+export function mapReceipt(raw: any, country?: string): Receipt {
+  const { zoneId } = resolveCountry(country);
   const rawLines = raw?.itemsLine || raw?.lines || raw?.items || [];
   let lines: ReceiptLine[] | undefined =
     Array.isArray(rawLines) && rawLines.length > 0
@@ -306,9 +329,17 @@ export function mapReceipt(raw: any): Receipt {
     raw?.storeName ||
     undefined;
 
+  const rawDate = raw?.date || raw?.purchaseDate || "";
+  const dateNorm = normalizeTimestamp(
+    typeof rawDate === "string" ? rawDate : String(rawDate),
+    zoneId,
+    { naiveAs: "utc" }
+  );
+
   return {
     id: String(raw?.id || raw?.ticketId || ""),
-    date: String(raw?.date || raw?.purchaseDate || ""),
+    date: dateNorm?.iso ?? String(rawDate),
+    localDate: dateNorm?.localDate,
     total:
       parseNumeric(raw?.totalAmount?.value ?? raw?.totalAmount ?? raw?.total) ?? 0,
     totalDiscount:

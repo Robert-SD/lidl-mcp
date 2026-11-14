@@ -248,6 +248,7 @@ interface ProductAccumulator {
   lastUnitPrice: number;
   lastPurchasedTs: number;
   lastPurchasedDate: string;
+  lastPurchasedLocalDate?: string;
   taxGroup?: string;
   storeIds: Set<string>;
 }
@@ -308,6 +309,7 @@ export function aggregateRegularProducts(
           lastUnitPrice: effectiveUnitPrice,
           lastPurchasedTs: receiptTs,
           lastPurchasedDate: receipt.date,
+          lastPurchasedLocalDate: receipt.localDate,
           taxGroup: line.taxGroup,
           storeIds: new Set(),
         };
@@ -327,6 +329,7 @@ export function aggregateRegularProducts(
       if (receiptTs >= acc.lastPurchasedTs) {
         acc.lastPurchasedTs = receiptTs;
         acc.lastPurchasedDate = receipt.date;
+        acc.lastPurchasedLocalDate = receipt.localDate;
         acc.lastUnitPrice = effectiveUnitPrice;
         if (desc.length >= acc.displayName.length) {
           acc.displayName = desc;
@@ -375,6 +378,9 @@ export function aggregateRegularProducts(
       lastUnitPrice: Number(acc.lastUnitPrice.toFixed(2)),
       averageLinePrice: Number((acc.linePriceSum / acc.lineCount).toFixed(2)),
       lastPurchasedDate: acc.lastPurchasedDate,
+      ...(acc.lastPurchasedLocalDate
+        ? { lastPurchasedLocalDate: acc.lastPurchasedLocalDate }
+        : {}),
       daysSinceLastPurchase,
       averageCadenceDays,
       dueForRestock,
@@ -497,6 +503,8 @@ function matchCoupons(
         isActivated: coupon.isActivated,
         startDate: coupon.startDate,
         endDate: coupon.endDate,
+        startLocalDate: coupon.startLocalDate,
+        endLocalDate: coupon.endLocalDate,
         matchScore: score,
       });
     }
@@ -585,6 +593,7 @@ export async function planGroceryTrip(
           title: c.title,
           discountTitle: c.discountTitle,
           endDate: c.endDate,
+          ...(c.endLocalDate ? { endLocalDate: c.endLocalDate } : {}),
           matchedItems: [],
         };
         unactivatedById.set(key, existing);

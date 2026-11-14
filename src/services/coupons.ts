@@ -1,15 +1,16 @@
 import { getOptionalAccessToken } from "../auth.js";
 import { resolveCountry } from "../countries.js";
+import { normalizeTimestamp } from "../dates.js";
 import { mapCoupon } from "../mappers.js";
 import { LidlCoupon } from "../types.js";
 import { LidlTransport } from "./transport.js";
 
-function flattenPromotionSections(raw: any): LidlCoupon[] {
+function flattenPromotionSections(raw: any, country: string): LidlCoupon[] {
   const out: LidlCoupon[] = [];
   for (const sec of Array.isArray(raw?.sections) ? raw.sections : []) {
     const sectionName = sec?.name || undefined;
     for (const promo of Array.isArray(sec?.promotions) ? sec.promotions : []) {
-      out.push(mapCoupon(promo, sectionName));
+      out.push(mapCoupon(promo, sectionName, country));
     }
   }
   return out;
@@ -42,7 +43,7 @@ export async function getCoupons(
     return {
       country: ctx.country,
       isAnonymousFallback: false,
-      coupons: flattenPromotionSections(raw),
+      coupons: flattenPromotionSections(raw, ctx.country),
     };
   }
 
@@ -59,7 +60,7 @@ export async function getCoupons(
   return {
     country: ctx.country,
     isAnonymousFallback: true,
-    coupons: flattenPromotionSections(raw),
+    coupons: flattenPromotionSections(raw, ctx.country),
   };
 }
 
@@ -68,7 +69,7 @@ export async function getCouponDetails(
   options: { promotionId: string; country?: string }
 ): Promise<any> {
   const ctx = resolveCountry(options.country);
-  return transport.request(
+  const raw = await transport.request<any>(
     `/app/api/v4/promotionsdetails/${encodeURIComponent(options.promotionId)}`,
     {
       host: "coupons",
@@ -78,6 +79,16 @@ export async function getCouponDetails(
       authMode: "required",
     }
   );
+  if (raw && typeof raw === "object" && raw.validity) {
+    const startNorm = normalizeTimestamp(raw.validity.start, ctx.zoneId, { naiveAs: "utc" });
+    const endNorm = normalizeTimestamp(raw.validity.end, ctx.zoneId, { naiveAs: "utc" });
+    return {
+      ...raw,
+      ...(startNorm ? { startDate: startNorm.iso, startLocalDate: startNorm.localDate } : {}),
+      ...(endNorm ? { endDate: endNorm.iso, endLocalDate: endNorm.localDate } : {}),
+    };
+  }
+  return raw;
 }
 
 export async function activateCoupon(
@@ -101,6 +112,9 @@ export async function activateCoupon(
     }
   );
   transport.invalidateCache("GET /app/api/v4/promotionslist");
+  transport.invalidateCache(
+    `GET /app/api/v4/promotionsdetails/${encodeURIComponent(options.promotionId)}`
+  );
   return {
     activated: true,
     promotionId: options.promotionId,
@@ -129,6 +143,9 @@ export async function deactivateCoupon(
     }
   );
   transport.invalidateCache("GET /app/api/v4/promotionslist");
+  transport.invalidateCache(
+    `GET /app/api/v4/promotionsdetails/${encodeURIComponent(options.promotionId)}`
+  );
   return {
     deactivated: true,
     promotionId: options.promotionId,

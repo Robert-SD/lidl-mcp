@@ -2,6 +2,10 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { LidlClient } from "../client.js";
 import { countryField, withJsonTool } from "./helpers.js";
+import {
+  groceryTripPlanOutputSchema,
+  regularProductsOutputSchema,
+} from "./schemas.js";
 
 export function registerPlannerTools(server: McpServer, c: LidlClient): void {
   server.registerTool(
@@ -53,6 +57,7 @@ export function registerPlannerTools(server: McpServer, c: LidlClient): void {
           .optional()
           .describe("Maximum number of regular products to return (default 50)."),
       }),
+      outputSchema: regularProductsOutputSchema,
     },
     withJsonTool((args) => c.getRegularProducts(args))
   );
@@ -115,6 +120,7 @@ export function registerPlannerTools(server: McpServer, c: LidlClient): void {
           .optional()
           .describe("Maximum matching offers/coupons per item (default 3)."),
       }),
+      outputSchema: groceryTripPlanOutputSchema,
     },
     withJsonTool((args) => c.planGroceryTrip(args))
   );

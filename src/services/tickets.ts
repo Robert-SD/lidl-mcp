@@ -1,4 +1,5 @@
 import { resolveCountry } from "../countries.js";
+import { normalizeTimestamp } from "../dates.js";
 import { mapReceipt } from "../mappers.js";
 import { Receipt } from "../types.js";
 import { LidlTransport } from "./transport.js";
@@ -24,7 +25,7 @@ export async function listReceipts(
     : Array.isArray(raw?.tickets)
       ? raw.tickets
       : [];
-  return list.map(mapReceipt);
+  return list.map((item: any) => mapReceipt(item, ctx.country));
 }
 
 export async function getReceiptDetails(
@@ -41,7 +42,7 @@ export async function getReceiptDetails(
       authMode: "required",
     }
   );
-  return mapReceipt(raw);
+  return mapReceipt(raw, ctx.country);
 }
 
 export async function getReceiptSummary(
@@ -49,7 +50,7 @@ export async function getReceiptSummary(
   options: { ticketId: string; country?: string }
 ): Promise<any> {
   const ctx = resolveCountry(options.country);
-  return transport.request(
+  const raw = await transport.request<any>(
     `/api/v3/${ctx.country}/tickets/${encodeURIComponent(options.ticketId)}/summary`,
     {
       host: "tickets",
@@ -58,6 +59,13 @@ export async function getReceiptSummary(
       authMode: "required",
     }
   );
+  if (raw && typeof raw === "object" && typeof raw.date === "string") {
+    const norm = normalizeTimestamp(raw.date, ctx.zoneId, { naiveAs: "utc" });
+    if (norm) {
+      return { ...raw, date: norm.iso, localDate: norm.localDate };
+    }
+  }
+  return raw;
 }
 
 export async function setReceiptFavorite(
@@ -75,5 +83,12 @@ export async function setReceiptFavorite(
     authMode: "required",
   });
   transport.invalidateCache(`GET /api/v3/${ctx.country}/tickets`);
-  return res;
+  return (
+    res ?? {
+      updated: true,
+      ticketId: options.ticketId,
+      favorite: options.favorite,
+      country: ctx.country,
+    }
+  );
 }

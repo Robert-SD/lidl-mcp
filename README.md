@@ -48,18 +48,18 @@ A single `lidl-mcp` server supports both **Netherlands (`nl`)** and **Germany (`
 ### 1. Authentication, Profile & Loyalty
 | Tool | Type | Description |
 | :--- | :---: | :--- |
-| `lidl_login` | Read | Check authentication status, token storage, default country, and member identity. |
+| `lidl_login` | Auth / Session | Check authentication status, refresh expired access token if available, and fetch member identity. |
 | `lidl_get_profile` | Read | Get Lidl Accounts OIDC profile & loyalty card details (`nl` / `de`). |
-| `lidl_get_loyalty_summary` | Read | Get loyalty points summary, active stampcards, and bottle deposits. |
-| `lidl_cache_stats` | Read | Report in-process response cache statistics (hits, misses, entries, hit rate). |
+| `lidl_get_loyalty_program` | Read | Get loyalty program status, active stampcards, and bottle deposits. |
+| `lidl_cache_stats` | Read | Report process-scoped in-memory cache statistics (`hits`, `misses`, `entries`, `hitRate`). |
 
 ### 2. Stores & Opening Hours
 | Tool | Type | Description |
 | :--- | :---: | :--- |
-| `lidl_search_stores` | Read | Search NL or DE stores by city, postal code, address, storeKey, or coordinates. |
+| `lidl_search_stores` | Read | Search NL or DE stores by city, postal code, address, `storeId`, or coordinates. |
 | `lidl_get_store_details` | Read | Get store zone, offer region, amenities, and opening hours for a date. |
 | `lidl_get_favorite_store` | Read | Get the user's favorite Lidl store (`nl` / `de`). |
-| `lidl_set_favorite_store` | Write | Set the user's favorite Lidl store (`nl` / `de`). |
+| `lidl_set_favorite_store` | Write | Set the user's favorite Lidl store (`storeId`, `nl` / `de`). |
 
 ### 3. Offers, Digital Leaflets, Brochures & Shop Products
 | Tool | Type | Description |

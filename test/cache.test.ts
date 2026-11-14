@@ -103,6 +103,35 @@ test("cachePolicyFor caches reference/leaflet/receipts and uses liveList TTL for
     cachePolicyFor("/api/v2/de/Brochures", { host: "brochures", method: "GET" })?.ttl,
     CACHE_TTL.offers
   );
+  assert.strictEqual(CACHE_TTL.offers, 60 * 60 * 1000);
+  assert.strictEqual(
+    cachePolicyFor("/app/api/v4/promotionsdetails/promo-123", { host: "coupons", method: "GET" })?.ttl,
+    CACHE_TTL.offers
+  );
+  assert.strictEqual(
+    cachePolicyFor("/connect/userinfo", { host: "accounts", method: "GET" })?.ttl,
+    CACHE_TTL.liveList
+  );
+  assert.strictEqual(
+    cachePolicyFor("/api/v1/NL/loyalty", { host: "profile", method: "GET" })?.ttl,
+    CACHE_TTL.productDetail
+  );
+  assert.strictEqual(
+    cachePolicyFor("/api/v2/NL/summary", { host: "loyaltytab", method: "GET" })?.ttl,
+    CACHE_TTL.liveList
+  );
+  assert.strictEqual(
+    cachePolicyFor("/api/v3/nl/user/promotions", { host: "stampcard", method: "GET" })?.ttl,
+    CACHE_TTL.liveList
+  );
+  assert.strictEqual(
+    cachePolicyFor("/api/v1/nl/deposits", { host: "deposits", method: "GET" })?.ttl,
+    CACHE_TTL.liveList
+  );
+  assert.strictEqual(
+    cachePolicyFor("/api/v4/nl/user/promotions", { host: "couponplus", method: "GET" })?.ttl,
+    CACHE_TTL.liveList
+  );
   assert.strictEqual(
     cachePolicyFor("/api/v3/nl/tickets/abc-123", { host: "tickets", method: "GET" })?.ttl,
     CACHE_TTL.receiptDetail

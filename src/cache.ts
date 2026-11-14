@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 
 export interface CacheStats {
   enabled: boolean;
+  scope: "process";
   maxEntries: number;
   hits: number;
   misses: number;
@@ -16,6 +17,7 @@ export interface CacheStats {
   evictions: number;
   entries: number;
   hitRate: number;
+  note?: string;
 }
 
 export interface TtlCacheOptions {
@@ -162,6 +164,7 @@ export class TtlCache {
     const total = this.hits + this.misses;
     return {
       enabled: this.enabled,
+      scope: "process",
       maxEntries: this.maxEntries,
       hits: this.hits,
       misses: this.misses,
@@ -169,6 +172,7 @@ export class TtlCache {
       evictions: this.evictions,
       entries: this.store.size,
       hitRate: total === 0 ? 0 : Number((this.hits / total).toFixed(3)),
+      note: "In-memory cache scoped to the current MCP server process; per-session or stateless gateway spawns start empty.",
     };
   }
 }

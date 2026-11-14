@@ -202,11 +202,17 @@ test("LidlClient handles uppercase country loyalty profile/summary, favorite-sto
     assert.strictEqual(profile.loyaltyCardNumber, "00000000000000001");
     assert.strictEqual(profile.name, "Test User");
 
-    const summary = await client.getLoyaltySummary("de");
+    const summary = await client.getLoyaltyProgram("de");
     assert.deepStrictEqual(summary.loyaltySummary, { activated: [{ id: "a1" }] });
     assert.strictEqual(summary.storeId, "DE0123");
     assert.deepStrictEqual(summary.stampcards, [{ id: "sc1" }]);
     assert.deepStrictEqual(summary.deposits, { total: 0 });
+
+    // Second read should hit in-process cache
+    const profile2 = await client.getProfile("nl");
+    assert.strictEqual(profile2.loyaltyCardNumber, "00000000000000001");
+    assert.ok(client.cacheStats().hits >= 2);
+    assert.strictEqual(client.cacheStats().scope, "process");
 
     const couponPlus = await client.getCouponPlus("nl");
     assert.strictEqual(couponPlus.active, false);

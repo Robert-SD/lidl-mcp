@@ -128,7 +128,7 @@ export async function getFavoriteStore(
 
 export async function setFavoriteStore(
   transport: LidlTransport,
-  storeKey: string,
+  storeId: string,
   country?: string
 ): Promise<any> {
   const ctx = resolveCountry(country);
@@ -137,9 +137,9 @@ export async function setFavoriteStore(
     country: ctx.country,
     language: ctx.language,
     method: "PUT",
-    body: { storeKey },
+    body: { storeKey: storeId },
     authMode: "required",
   });
   transport.invalidateCache(`GET /api/v1/users/me/favorite/${ctx.country}`);
-  return res;
+  return res ?? { updated: true, storeId, country: ctx.country };
 }

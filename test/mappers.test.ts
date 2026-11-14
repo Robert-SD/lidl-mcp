@@ -81,31 +81,65 @@ test("mapCoupon, mapCampaign, mapBrochure, and mapReceipt normalize fields", () 
       isActivated: true,
       specialPromotion: { tag: "op=op" },
     },
-    "AllStores"
+    "AllStores",
+    "nl"
   );
   assert.strictEqual(coupon.isActivated, true);
   assert.strictEqual(coupon.specialTag, "op=op");
   assert.strictEqual(coupon.section, "AllStores");
+  assert.strictEqual(coupon.startDate, "2026-11-13T00:00:01+01:00");
+  assert.strictEqual(coupon.startLocalDate, "2026-11-13");
+  assert.strictEqual(coupon.endDate, "2026-11-16T23:59:59+01:00");
+  assert.strictEqual(coupon.endLocalDate, "2026-11-16");
 
   const campaign = mapCampaign({ id: "100", title: "Aanbiedingen", subtitle: "MA" }, "Deze week");
   assert.strictEqual(campaign.groupTitle, "Deze week");
 
-  const brochure = mapBrochure({ id: "b1", title: "Folder", downloadUrl: "https://example/f.pdf" }, "Actueel");
+  const brochure = mapBrochure(
+    {
+      id: "b1",
+      title: "Folder",
+      startDate: "2026-10-09T00:00:00",
+      endDate: "2026-12-05T00:00:00",
+      downloadUrl: "https://example/f.pdf",
+    },
+    "Actueel",
+    "nl"
+  );
   assert.strictEqual(brochure.downloadUrl, "https://example/f.pdf");
+  assert.strictEqual(brochure.startDate, "2026-10-09T00:00:00+02:00");
+  assert.strictEqual(brochure.startLocalDate, "2026-10-09");
+  assert.strictEqual(brochure.endDate, "2026-12-05T00:00:00+01:00");
+  assert.strictEqual(brochure.endLocalDate, "2026-12-05");
 
-  const receipt = mapReceipt({
-    id: "t1",
-    date: "2026-11-14T12:00:00Z",
-    totalAmount: "12,50",
-    totalDiscount: "1.25",
-    store: { id: "NL0135", name: "Amsterdam" },
-    itemsLine: [
-      { description: "Melk", quantity: "2", extendedAmount: "2,40", discounts: [{ amount: "0.20" }] },
-    ],
-  });
-  assert.strictEqual(receipt.total, 12.5);
-  assert.strictEqual(receipt.lines?.[0].price, 2.4);
-  assert.strictEqual(receipt.lines?.[0].discount, 0.2);
+  const receiptList = mapReceipt(
+    {
+      id: "t1",
+      date: "2026-04-10T19:14:49+00:00",
+      totalAmount: "12,50",
+      totalDiscount: "1.25",
+      store: { id: "NL0135", name: "Amsterdam" },
+      itemsLine: [
+        { description: "Melk", quantity: "2", extendedAmount: "2,40", discounts: [{ amount: "0.20" }] },
+      ],
+    },
+    "nl"
+  );
+  const receiptDetail = mapReceipt(
+    {
+      id: "t1",
+      date: "2026-04-10T19:14:49",
+      totalAmount: "12,50",
+    },
+    "nl"
+  );
+  assert.strictEqual(receiptList.date, "2026-04-10T21:14:49+02:00");
+  assert.strictEqual(receiptList.localDate, "2026-04-10");
+  assert.strictEqual(receiptDetail.date, receiptList.date);
+  assert.strictEqual(receiptDetail.localDate, "2026-04-10");
+  assert.strictEqual(receiptList.total, 12.5);
+  assert.strictEqual(receiptList.lines?.[0].price, 2.4);
+  assert.strictEqual(receiptList.lines?.[0].discount, 0.2);
 });
 
 test("parseHtmlReceiptLines and mapReceipt handle HTML receipts, discounts, weights, entities, and empty store name", () => {

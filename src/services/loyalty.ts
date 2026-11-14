@@ -51,7 +51,7 @@ export async function getProfile(
   };
 }
 
-export async function getLoyaltySummary(
+export async function getLoyaltyProgram(
   transport: LidlTransport,
   options: { country?: string; storeId?: string } = {}
 ): Promise<any> {
@@ -111,3 +111,6 @@ export async function getLoyaltySummary(
         : { error: (deposits.reason as Error)?.message },
   };
 }
+
+/** @deprecated Use `getLoyaltyProgram` instead. */
+export const getLoyaltySummary = getLoyaltyProgram;

@@ -2,6 +2,12 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { LidlClient } from "../client.js";
 import { countryField, withJsonTool } from "./helpers.js";
+import {
+  listReceiptsOutputSchema,
+  receiptSchema,
+  receiptSummaryOutputSchema,
+  setReceiptFavoriteOutputSchema,
+} from "./schemas.js";
 
 export function registerReceiptTools(server: McpServer, c: LidlClient): void {
   server.registerTool(
@@ -21,8 +27,12 @@ export function registerReceiptTools(server: McpServer, c: LidlClient): void {
           .optional()
           .describe("Optional year offset (0 = current year, 1 = previous year, etc.)."),
       }),
+      outputSchema: listReceiptsOutputSchema,
     },
-    withJsonTool((args) => c.listReceipts(args))
+    withJsonTool(async (args) => {
+      const receipts = await c.listReceipts(args);
+      return { count: receipts.length, receipts };
+    })
   );
 
   server.registerTool(
@@ -36,6 +46,7 @@ export function registerReceiptTools(server: McpServer, c: LidlClient): void {
         ticketId: z.string().min(1).describe("Receipt/ticket ID from lidl_list_receipts."),
         country: countryField,
       }),
+      outputSchema: receiptSchema,
     },
     withJsonTool((args) => c.getReceiptDetails(args))
   );
@@ -51,6 +62,7 @@ export function registerReceiptTools(server: McpServer, c: LidlClient): void {
         ticketId: z.string().min(1).describe("Receipt/ticket ID from lidl_list_receipts."),
         country: countryField,
       }),
+      outputSchema: receiptSummaryOutputSchema,
     },
     withJsonTool((args) => c.getReceiptSummary(args))
   );
@@ -61,12 +73,17 @@ export function registerReceiptTools(server: McpServer, c: LidlClient): void {
       title: "Favorite or Unfavorite a Lidl Receipt",
       description:
         "Mark or unmark a digital receipt as favorite in NL or DE.",
-      annotations: { readOnlyHint: false, destructiveHint: false },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
       inputSchema: z.object({
         ticketId: z.string().min(1).describe("Receipt/ticket ID."),
         favorite: z.boolean().describe("true to favorite, false to unfavorite."),
         country: countryField,
       }),
+      outputSchema: setReceiptFavoriteOutputSchema,
     },
     withJsonTool((args) => c.setReceiptFavorite(args))
   );
